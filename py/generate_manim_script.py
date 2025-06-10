@@ -137,50 +137,71 @@ Common Errors to avoid: {common_error}"""
 
 
 def main():
-    script_json_path = "script.json"
-    code_md_path = "code.md"
-    workspace_root = r"c:\Users\ankan\Documents\Projects\Manim\md_and_json"
+    # Determine the workspace root dynamically
+    script_file_path = os.path.abspath(__file__)
+    script_directory = os.path.dirname(script_file_path)
+    actual_workspace_root = os.path.abspath(os.path.join(script_directory, ".."))
+    
+    os.chdir(actual_workspace_root)
 
-    abs_script_json_path = os.path.join(workspace_root, script_json_path)
-    abs_code_md_path = os.path.join(workspace_root, code_md_path)
+    # The old definitions for script_json_path, code_md_path, error_md_path,
+    # workspace_root, and abs_... paths are replaced by these relative paths:
+    script_json_path = os.path.join("script.json")
+    code_md_path = os.path.join("md", "code.md")
+    error_md_path = os.path.join("md", "error.md")
 
-    if not os.path.exists(abs_script_json_path):
-        print(f"Error: {abs_script_json_path} not found.")
+    # The following block is updated to use the new relative script_json_path
+    if not os.path.exists(script_json_path):
+        print(f"Error: {script_json_path} not found.")
         return
 
     try:
-        with open(abs_script_json_path, 'r', encoding='utf-8') as f:
+        with open(script_json_path, 'r', encoding='utf-8') as f:
             script_data = json.load(f)
     except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {abs_script_json_path}.")
+        print(f"Error: Could not decode JSON from {script_json_path}.")
         return
     except Exception as e:
-        print(f"Error reading {abs_script_json_path}: {e}")
+        print(f"Error reading {script_json_path}: {e}")
         return
+
+    # Reset code.md before processing (This existing block will now use the updated code_md_path)
+    try:
+        with open(code_md_path, 'w', encoding='utf-8') as md_file:
+            md_file.write(f"# Generated Manim Scripts (via {os.path.basename(__file__)})\\n\\n")
+        print(f"Successfully reset {code_md_path}")
+    except IOError as e:
+        print(f"Error: Could not reset {code_md_path}. {e}")
+        # Depending on requirements, you might want to return here or allow continuation
+
+    # Reset error.md before processing (This existing block will now use the updated error_md_path)
+    try:
+        with open(error_md_path, 'w', encoding='utf-8') as err_file:
+            err_file.write(f"# Error Log (via {os.path.basename(__file__)})\\n\\n")
+        print(f"Successfully reset {error_md_path}")
+    except IOError as e:
+        print(f"Error: Could not reset {error_md_path}. {e}")
+        # Depending on requirements, you might want to return here or allow continuation
 
     previous_generated_code = ""
     previous_generation_problem = ""
 
-    with open(abs_code_md_path, 'a', encoding='utf-8') as md_file:
-        is_empty = md_file.tell() == 0
-        if is_empty:
-             md_file.write(f"# Generated Manim Scripts (via {os.path.basename(__file__)})\n\n")
-        else:
-            md_file.write(f"\n---\n\n## Additional Scripts Generated (via {os.path.basename(__file__)})\n\n")
-
-
+    with open(code_md_path, 'a', encoding='utf-8') as md_file:
+        # The initial header is now written during the reset phase.
+        # The is_empty check and conditional header writing previously here are removed.
+        
         for index, item in enumerate(script_data):
             animation_description = item.get("animation-description")
             if animation_description:
                 print(f"Processing animation description {index + 1}/{len(script_data)}...")
                 python_code = generate_python_code_with_gemini(animation_description, previous_generated_code, previous_generation_problem)
 
-                md_file.write(f"### Animation Scene {index + 1}\n")
-                md_file.write(f"**Description:** {animation_description}\n\n")
-                md_file.write("```python\n")
+                md_file.write(f"### Animation Scene {index + 1}\\n")
+                md_file.write(f"**Description:** {animation_description}\\n\\n")
+                md_file.write("```python\\n")
                 md_file.write(python_code)
-                md_file.write("\n```\n\n")
-                print(f"Appended code for scene {index + 1} to {abs_code_md_path}")
+                md_file.write("\\n```\\n\\n")
+                print(f"Appended code for scene {index + 1} to {code_md_path}")
 
                 if python_code.startswith("# Error:"):
                     previous_generation_problem = python_code
@@ -190,7 +211,7 @@ def main():
             else:
                 print(f"Warning: No 'animation-description' found for item {index + 1}.")
 
-    print(f"Processing complete. Manim Python code snippets appended to {abs_code_md_path}")
+    print(f"Processing complete. Manim Python code snippets appended to {code_md_path}")
 
 if __name__ == "__main__":
     main()
