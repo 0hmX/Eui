@@ -18,14 +18,14 @@ def log_error_to_markdown(error_message, code_snippet, error_md_path="error.md")
     """Appends the error message and code snippet to error.md."""
     try:
         with open(error_md_path, 'a', encoding='utf-8') as f:
-            f.write("### Render Error\\n\\n")
-            f.write("```python\\n")
-            f.write(code_snippet + "\\n")
-            f.write("```\\n\\n")
-            f.write("**Error Message:**\\n")
-            f.write("```\\n")
-            f.write(error_message + "\\n")
-            f.write("```\\n\\n---\\n\\n")
+            f.write("### Render Error\n\n")
+            f.write("```python\n")
+            f.write(code_snippet + "\n")
+            f.write("```\n\n")
+            f.write("**Error Message:**\n")
+            f.write("```\n")
+            f.write(error_message + "\n")
+            f.write("```\n\n---\n\n")
         print(f"Error logged to {error_md_path}")
     except IOError as e:
         print(f"Critical: Could not write to error log file {error_md_path}: {e}")
@@ -56,22 +56,22 @@ def trigger_render(animation_code, scene_name, temp_script_path):
         result = subprocess.run(command, text=True, encoding='utf-8', capture_output=True, check=False)
         
         if result.returncode != 0:
-            error_message = f"Manim process exited with error code {result.returncode}.\\n"
-            error_message += "Stdout:\\n" + result.stdout + "\\n"
-            error_message += "Stderr:\\n" + result.stderr
+            error_message = f"Manim process exited with error code {result.returncode}.\n"
+            error_message += "Stdout:\n" + result.stdout + "\n"
+            error_message += "Stderr:\n" + result.stderr
             print(f"Error during Manim execution: {scene_name}")
             log_error_to_markdown(error_message, animation_code)
         else:
             # Print Manim's output (like the progress bar) to the console if successful
             # For simplicity, we'll just print stdout. Stderr might contain warnings.
             if result.stdout:
-                print("Manim Output:\\n", result.stdout)
+                print("Manim Output:\n", result.stdout)
             if result.stderr: # Also print stderr in case of warnings even on success
-                print("Manim Stderr (Warnings/Info):\\n", result.stderr)
+                print("Manim Stderr (Warnings/Info):\n", result.stderr)
 
     except FileNotFoundError:
         error_msg = "FATAL ERROR: 'manim' command not found. Please ensure Manim is installed and accessible in your system's PATH."
-        print(f"\\n{error_msg}")
+        print(f"\n{error_msg}")
         log_error_to_markdown(error_msg, animation_code)
         # Unlike other errors, if manim isn't found, we probably should stop.
         # However, per requirement, we'll log and attempt to continue, though subsequent renders will also fail.

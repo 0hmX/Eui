@@ -47,6 +47,20 @@ Of course. Here is a summary of the common rendering errors encountered, present
 ### 5. Alwaays use default for camera aspects do not edit the below values
  NVER DO THIS self.camera.frame_height = any value # Common aspect ratio for shorts
  NEVER DO THIS self.camera.frame_width = any value
+
+### 6. Of course. Here is a report on the two errors:
+
+*   **Camera Frame Error:** The `AttributeError: 'Camera' object has no attribute 
+'frame'` arises when attempting to animate camera movement (e.g., zooming or panning)
+in a standard `Scene`. This class uses a static camera. The correct solution is
+to change the scene's inheritance to `MovingCameraScene`, which is specifically
+designed for camera manipulation and provides the necessary animatable `.frame` attribute.
+
+*   **NumberLine Labels Index Error:** The `IndexError: list index out of range`
+occurred when trying to fade `NumberLine` labels. This was because `add_labels()`
+modifies the `NumberLine` object directly instead of returning a separate group
+of labels. The fix was to manually create the labels, position them using `.n2p()`,
+and collect them in their own distinct `VGroup` for independent animation.
 """
 
 def generate_python_code_with_gemini(animation_description: str, previous_code: str | None = None, previous_problem: str | None = None) -> str:
