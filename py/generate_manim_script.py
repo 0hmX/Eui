@@ -31,7 +31,7 @@ Of course. Here is a summary of the common rendering errors encountered, present
             2.  Applying a wide, semi-transparent stroke to the copy using `.set_stroke()`.
             3.  Grouping the original object and the stroke-copy into a `VGroup`.
 
-### Here is a point-wise breakdown of the Manim rendering errors.
+### 4. Here is a point-wise breakdown of the Manim rendering errors.
 *   **Explicit Imports are Required:** The primary error, `ImportError` or `NameError`, occurs because specialized classes like `Blink` are not included in Manim's default namespace. Relying on `from manim import *` is insufficient. You must explicitly import such classes from their specific submodule.
     *   **Solution:** Add the line `from manim.animation.indication import Blink` at the top of your script.
 
@@ -44,9 +44,9 @@ Of course. Here is a summary of the common rendering errors encountered, present
     *   To make an object appear, use `self.add(my_object)`.
     *   To make that object perform the `Blink` animation, you must then use `self.play(Blink(my_object))`.
 
-### Alwaays use default for camera aspects do not edit the below values
- NVER DO THIS self.camera.frame_height = 8.0  # Common aspect ratio for shorts
- NEVER DO THIS self.camera.frame_width = 4.5
+### 5. Alwaays use default for camera aspects do not edit the below values
+ NVER DO THIS self.camera.frame_height = any value # Common aspect ratio for shorts
+ NEVER DO THIS self.camera.frame_width = any value
 """
 
 def generate_python_code_with_gemini(animation_description: str, previous_code: str | None = None, previous_problem: str | None = None) -> str:
