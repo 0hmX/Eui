@@ -14,7 +14,7 @@ def find_scene_name(code_string):
         return match.group(1)
     return None
 
-def log_error_to_markdown(error_message, code_snippet, error_md_path="md_and_json\\error.md"):
+def log_error_to_markdown(error_message, code_snippet, error_md_path="error.md"):
     """Appends the error message and code snippet to error.md."""
     try:
         with open(error_md_path, 'a', encoding='utf-8') as f:

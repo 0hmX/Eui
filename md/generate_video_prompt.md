@@ -18,7 +18,7 @@ example output
 	{
 		"music-description": "<replace>",
 		"speech": "<replace>",
-		"animaiton-description": "<replace>",
+		"animation-description": "<replace>",
 		"duration": "<replace>s"
 	},
 	...

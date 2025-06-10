@@ -146,7 +146,7 @@ def main():
 
     # The old definitions for script_json_path, code_md_path, error_md_path,
     # workspace_root, and abs_... paths are replaced by these relative paths:
-    script_json_path = os.path.join("script.json")
+    script_json_path = os.path.join("md","script.json")
     code_md_path = os.path.join("md", "code.md")
     error_md_path = os.path.join("md", "error.md")
 
@@ -168,7 +168,7 @@ def main():
     # Reset code.md before processing (This existing block will now use the updated code_md_path)
     try:
         with open(code_md_path, 'w', encoding='utf-8') as md_file:
-            md_file.write(f"# Generated Manim Scripts (via {os.path.basename(__file__)})\\n\\n")
+            md_file.write(f"# Generated Manim Scripts (via {os.path.basename(__file__)})\n")
         print(f"Successfully reset {code_md_path}")
     except IOError as e:
         print(f"Error: Could not reset {code_md_path}. {e}")
@@ -177,7 +177,7 @@ def main():
     # Reset error.md before processing (This existing block will now use the updated error_md_path)
     try:
         with open(error_md_path, 'w', encoding='utf-8') as err_file:
-            err_file.write(f"# Error Log (via {os.path.basename(__file__)})\\n\\n")
+            err_file.write(f"# Error Log (via {os.path.basename(__file__)})\n\n")
         print(f"Successfully reset {error_md_path}")
     except IOError as e:
         print(f"Error: Could not reset {error_md_path}. {e}")
@@ -196,11 +196,11 @@ def main():
                 print(f"Processing animation description {index + 1}/{len(script_data)}...")
                 python_code = generate_python_code_with_gemini(animation_description, previous_generated_code, previous_generation_problem)
 
-                md_file.write(f"### Animation Scene {index + 1}\\n")
-                md_file.write(f"**Description:** {animation_description}\\n\\n")
-                md_file.write("```python\\n")
+                md_file.write(f"### Animation Scene {index + 1}\n")
+                md_file.write(f"**Description:** {animation_description}\n\n")
+                md_file.write("```python\n")
                 md_file.write(python_code)
-                md_file.write("\\n```\\n\\n")
+                md_file.write("\n```\n\n")
                 print(f"Appended code for scene {index + 1} to {code_md_path}")
 
                 if python_code.startswith("# Error:"):
