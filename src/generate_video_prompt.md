@@ -12,6 +12,7 @@ make a yt-short on the topic {}
 - the script will be write like some one really excited is giving a reaction video with some explanation;
 - max 5 items
 - start with eye catchy graphs and plots
+- no "..." trippel dots in the speech
 
 example output
 ```json

@@ -145,26 +145,26 @@ def main():
                 print(f"Failed to generate audio for: \"{speech_text[:60]}...\"")
                 print("Aborting further processing.")
                 if process: 
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1)
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1)
+                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
+                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
                     process.terminate()
                     process.wait()
                 sys.exit(1)
             except Exception as e: 
                 print(f"An unexpected error occurred while processing speech {i + 1} (\"{speech_text[:60]}...\"): {e}")
                 if process: 
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1)
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1)
+                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
+                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
                     process.terminate()
                     process.wait()
                 # Continue to the next item or sys.exit(1) if critical
             finally:
                 if process and process.poll() is None: 
                     print(f"\nEnsuring active subprocess for speech {i+1} is terminated...")
-                    if stdout_thread and stdout_thread.is_alive():
+                    if stdout_thread and stdout_thread.is_alive(): # type: ignore
                         # stdout_thread.join(timeout=1) # Give a chance to finish
                         pass # Pipe should close on process.terminate()
-                    if stderr_thread and stderr_thread.is_alive():
+                    if stderr_thread and stderr_thread.is_alive(): # type: ignore
                         # stderr_thread.join(timeout=1)
                         pass # Pipe should close on process.terminate()
                     
@@ -177,8 +177,8 @@ def main():
                         process.wait()
                     print("Subprocess terminated.")
                     # Ensure threads are joined after process termination attempt
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1)
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1)
+                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
+                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
 
                         
         print("\nScript finished. All speech processing tasks have been attempted.")

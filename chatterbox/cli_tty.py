@@ -36,7 +36,7 @@ def main():
 
     try:
         print(f"Generating audio for: \"{text_to_synthesize}\"")
-        wav = model.generate(text_to_synthesize)
+        wav = model.generate(text_to_synthesize, cfg_weight=.8, exaggeration=.5)
         ta.save(output_file_path, wav, model.sr)
         print(f"Audio saved to {output_file_path}")
     except Exception as e:
