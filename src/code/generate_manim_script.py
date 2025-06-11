@@ -152,17 +152,15 @@ Common Errors to avoid: {common_error}"""
 
 def main():
     # Determine the workspace root dynamically
-    script_file_path = os.path.abspath(__file__)
-    script_directory = os.path.dirname(script_file_path)
-    actual_workspace_root = os.path.abspath(os.path.join(script_directory, ".."))
-    
-    os.chdir(actual_workspace_root)
+    script_file_path = os.getcwd()
 
-    # The old definitions for script_json_path, code_md_path, error_md_path,
-    # workspace_root, and abs_... paths are replaced by these relative paths:
-    script_json_path = os.path.join("md","script.json")
-    code_md_path = os.path.join("md", "code.md")
-    error_md_path = os.path.join("md", "error.md")
+    script_json_path = os.path.join(script_file_path, "script.json")
+    code_md_path = os.path.join(script_file_path,"out", "code.md")
+    error_md_path = os.path.join(script_file_path, "out", "error.md")
+    try:
+        os.makedirs(os.path.join(script_file_path, "out"))
+    except FileExistsError:
+        pass
 
     # The following block is updated to use the new relative script_json_path
     if not os.path.exists(script_json_path):

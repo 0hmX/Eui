@@ -9,12 +9,12 @@ import tempfile
 def find_scene_name(code_string):
     """Finds the Manim scene class name from a string of code."""
     # This regex is robust enough for various class definitions
-    match = re.search(r"class\s+([a-zA-Z0-9_]+)\s*\((?:Scene|MovingCameraScene|ZoomedScene)\):", code_string)
+    match = re.search(r"class\s+([a-zA-Z0-9_]+)\s*\((?:Scene|MovingCameraScene|ZoomedScene|ThreeDScene)\):", code_string)
     if match:
         return match.group(1)
     return None
 
-def log_error_to_markdown(error_message, code_snippet, error_md_path="error.md"):
+def log_error_to_markdown(error_message, code_snippet, error_md_path="out\\error.md"):
     """Appends the error message and code snippet to error.md."""
     try:
         with open(error_md_path, 'a', encoding='utf-8') as f:
