@@ -10,8 +10,7 @@ make a yt-short on the topic {}
 - no code diffes that are big
 - only simple shapes and simple text will be used
 - each animtion will atlset take 5s
-- THIS DEPENDES ON YOU but try to start with some graph or visual structre that can be made with manim
-- the script will be write like some one really really excited is giving a reaction video with some explanation;
+- the script will be write like some one really excited is giving a reaction video with some explanation;
 
 example output
 ```json
