@@ -4,4 +4,6 @@ error.md
 code.md
 script.json
 out
-.env
+.env*
+.env.sh
+env.sh
