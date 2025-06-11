@@ -17,6 +17,11 @@ def find_scene_name(code_string):
 def log_error_to_markdown(error_message, code_snippet, error_md_path="out\\error.md"):
     """Appends the error message and code snippet to error.md."""
     try:
+        with open(error_md_path, 'w', encoding='utf-8') as f:
+            f.write("")
+    except IOError as e:
+        print(f"Critical: Could not write to error log file {error_md_path}: {e}")
+    try:
         with open(error_md_path, 'a', encoding='utf-8') as f:
             f.write("### Render Error\n\n")
             f.write("```python\n")
