@@ -4,6 +4,8 @@ import subprocess
 import re
 import textwrap
 import tempfile
+import threading
+import time
 
 def find_scene_name(code_string):
     match = re.search(r"class\s+([a-zA-Z0-9_]+)\s*\((?:Scene|MovingCameraScene|ZoomedScene|ThreeDScene)\):", code_string)
@@ -13,10 +15,12 @@ def find_scene_name(code_string):
 
 def log_error_to_markdown(error_message, code_snippet, error_md_path="out\\error.md"):
     try:
+        # Clear the error log file by opening in write mode first
         with open(error_md_path, 'w', encoding='utf-8') as f:
             f.write("") 
     except IOError as e:
         print(f"Critical: Could not clear error log file {error_md_path}: {e}")
+        # Continue to attempt appending even if clearing failed
     try:
         with open(error_md_path, 'a', encoding='utf-8') as f:
             f.write("### Render Error\n\n")
@@ -30,6 +34,26 @@ def log_error_to_markdown(error_message, code_snippet, error_md_path="out\\error
         print(f"Error logged to {error_md_path}")
     except IOError as e:
         print(f"Critical: Could not write to error log file {error_md_path}: {e}")
+
+def stream_pipe(pipe, output_list, display_prefix=""):
+    """Reads from a pipe and appends to a list, optionally displaying lines."""
+    try:
+        if pipe:
+            for line in iter(pipe.readline, ''):
+                if display_prefix == "stderr":
+                    sys.stderr.write(line)
+                    sys.stderr.flush()
+                else:
+                    print(line, end='')
+                    sys.stdout.flush()
+                output_list.append(line)
+    except ValueError: # Pipe might be closed unexpectedly
+        if display_prefix:
+            print(f"\nInfo: {display_prefix} stream pipe closed abruptly.", file=sys.stderr)
+        else:
+            print(f"\nInfo: stdout stream pipe closed abruptly.", file=sys.stderr)
+    except Exception as e:
+        print(f"\nError in stream_pipe ({display_prefix or 'stdout'}): {e}", file=sys.stderr)
 
 def trigger_render(animation_code, scene_name, temp_script_path):
     try:
@@ -50,44 +74,77 @@ def trigger_render(animation_code, scene_name, temp_script_path):
     stdout_lines = []
     stderr_lines = []
     process = None
+    stdout_thread = None
+    stderr_thread = None
 
     try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', bufsize=1)
+        process = subprocess.Popen(
+            command, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True, 
+            encoding='utf-8', 
+            bufsize=1
+        )
 
         if process.stdout:
-            for line in iter(process.stdout.readline, ''):
-                print(line, end='')
-                stdout_lines.append(line)
-            process.stdout.close()
+            stdout_thread = threading.Thread(target=stream_pipe, args=(process.stdout, stdout_lines))
+            stdout_thread.daemon = True 
+            stdout_thread.start()
 
         if process.stderr:
-            for line in iter(process.stderr.readline, ''):
-                sys.stderr.write(line)
-                stderr_lines.append(line)
-            process.stderr.close()
+            stderr_thread = threading.Thread(target=stream_pipe, args=(process.stderr, stderr_lines, "stderr"))
+            stderr_thread.daemon = True
+            stderr_thread.start()
 
-        process.wait()
+        if process:
+            process.wait()
 
-        if process.returncode != 0:
+        if stdout_thread and stdout_thread.is_alive():
+            stdout_thread.join(timeout=2)
+        if stderr_thread and stderr_thread.is_alive():
+            stderr_thread.join(timeout=2)
+
+        if process and process.returncode != 0:
             error_message = f"Manim process exited with error code {process.returncode}.\n"
             error_message += "Stdout:\n" + "".join(stdout_lines) + "\n"
             error_message += "Stderr:\n" + "".join(stderr_lines)
             print(f"\nError during Manim execution: {scene_name}")
             log_error_to_markdown(error_message, animation_code)
-        else:
+        elif process:
             print(f"\nManim execution successful for: {scene_name}")
 
     except KeyboardInterrupt:
         print("\nInterruption detected during Manim process. Terminating...")
         if process and process.poll() is None:
+            print("Sending SIGTERM to Manim process...")
             process.terminate()
             try:
-                process.wait(timeout=5)
+                process.wait(timeout=10)
+                print("Manim process terminated gracefully.")
             except subprocess.TimeoutExpired:
-                print("Manim process did not terminate gracefully, killing.")
+                print("Manim process did not terminate gracefully after 10s, sending SIGKILL.")
                 process.kill()
-                process.wait()
-            print("Manim process terminated.")
+                try:
+                    process.wait(timeout=5)
+                    print("Manim process killed.")
+                except subprocess.TimeoutExpired:
+                    print("Failed to kill Manim process even after SIGKILL.")
+                except Exception as e_kill:
+                    print(f"Error during process kill: {e_kill}")
+            except Exception as e_term:
+                print(f"Error during process termination: {e_term}")
+        
+        if stdout_thread and stdout_thread.is_alive():
+            print("Waiting for stdout stream to close...")
+            stdout_thread.join(timeout=5)
+            if stdout_thread.is_alive(): print("Stdout stream did not close in time.")
+        if stderr_thread and stderr_thread.is_alive():
+            print("Waiting for stderr stream to close...")
+            stderr_thread.join(timeout=5)
+            if stderr_thread.is_alive(): print("Stderr stream did not close in time.")
+        
+        print("Manim process and stream handling concluded after interruption.")
         raise 
     except FileNotFoundError:
         error_msg = "FATAL ERROR: 'manim' command not found. Please ensure Manim is installed and accessible in your system's PATH."
@@ -95,8 +152,28 @@ def trigger_render(animation_code, scene_name, temp_script_path):
         log_error_to_markdown(error_msg, animation_code)
     except Exception as e:
         error_msg = f"An unexpected error occurred while trying to run subprocess: {e}"
-        print(error_msg)
+        print(f"\n{error_msg}")
         log_error_to_markdown(error_msg, animation_code)
+        if process and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        if stdout_thread and stdout_thread.is_alive():
+            stdout_thread.join(timeout=2)
+        if stderr_thread and stderr_thread.is_alive():
+            stderr_thread.join(timeout=2)
+    finally:
+        if process:
+            if process.stdout and not process.stdout.closed:
+                try: process.stdout.close()
+                except Exception: pass
+            if process.stderr and not process.stderr.closed:
+                try: process.stderr.close()
+                except Exception: pass
+        # Daemon threads will exit with the main thread if still alive.
 
 def main():
     try:
@@ -123,6 +200,8 @@ def main():
             sys.exit(0)
 
         total_animations = len(animations)
+        # Ensure the error log is cleared once before any animations start
+        log_error_to_markdown("", "") # Call with empty messages to effectively clear/initialize the log
 
         with tempfile.TemporaryDirectory() as temp_dir:
             print(f"Created temporary directory for scripts: {temp_dir}")
