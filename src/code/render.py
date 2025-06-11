@@ -86,13 +86,9 @@ def trigger_render(animation_code, scene_name, temp_script_path):
         log_error_to_markdown(error_msg, animation_code)
 
 def main():
-    """Main function to parse the Markdown file and orchestrate the rendering process."""
-    if len(sys.argv) != 2:
-        print("Usage: python render_all.py <path_to_markdownfile>")
-        print("Example: python render_all.py code.md")
-        sys.exit(1)
-
-    md_file_path = sys.argv[1]
+    cwd = os.getcwd()
+    code_md_path = os.path.join(cwd, "out", "code.md")
+    md_file_path = code_md_path
 
     if not os.path.exists(md_file_path):
         print(f"Error: Markdown file not found at '{md_file_path}'")
