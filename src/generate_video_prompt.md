@@ -13,6 +13,7 @@ make a yt-short on the topic {}
 - max 5 items
 - start with eye catchy graphs and plots
 - no "..." trippel dots in the speech
+- take a deep breath and write very meaning full world; do not woory about length; we will speed it up to fit if needed
 
 example output
 ```json
