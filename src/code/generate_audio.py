@@ -94,8 +94,8 @@ def main():
             # 5. Prepare and run the command
             command = [
                 "uv", "run", cli_script_name, 
-                speech_text, 
-                absolute_output_file_path
+                f'"{speech_text}"', 
+                f'"{absolute_output_file_path}"'
             ]
             
             stdout_lines = []
