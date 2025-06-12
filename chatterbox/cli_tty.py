@@ -21,8 +21,10 @@ def main():
         device = "cpu"
 
     print(f"Using device: {device}")
-
-    target_voice = os.path.join(os.getcwd(), "target.mp3")
+    try:
+        target_voice = os.path.join(os.getcwd(), "target.mp3")
+    except Exception as e:
+        target_voice = None
 
     try:
         model = ChatterboxTTS.from_pretrained(device=device)
@@ -39,7 +41,10 @@ def main():
 
     try:
         print(f"Generating audio for: \"{text_to_synthesize}\"")
-        wav = model.generate(text_to_synthesize, audio_prompt_path=target_voice, cfg_weight=.8, exaggeration=.5)
+        if target_voice:
+            wav = model.generate(text_to_synthesize, audio_prompt_path=target_voice, cfg_weight=.8, exaggeration=.5)
+        else:
+            wav = model.generate(text_to_synthesize, cfg_weight=.8, exaggeration=.5)
         ta.save(output_file_path, wav, model.sr)
         print(f"Audio saved to {output_file_path}")
     except Exception as e:
