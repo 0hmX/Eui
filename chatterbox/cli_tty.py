@@ -23,6 +23,7 @@ def main():
     print(f"Using device: {device}")
     try:
         target_voice = os.path.join(os.getcwd(), "target.mp3")
+        open(target_voice)
     except Exception as e:
         target_voice = None
 
