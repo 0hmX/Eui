@@ -3,6 +3,7 @@ import torch
 from chatterbox.tts import ChatterboxTTS
 import argparse
 import sys
+import os
 
 def main():
     parser = argparse.ArgumentParser(description="Generate audio from text using ChatterboxTTS.")
@@ -21,6 +22,8 @@ def main():
 
     print(f"Using device: {device}")
 
+    target_voice = os.path.join(os.getcwd(), "target.mp3")
+
     try:
         model = ChatterboxTTS.from_pretrained(device=device)
     except Exception as e:
@@ -36,7 +39,7 @@ def main():
 
     try:
         print(f"Generating audio for: \"{text_to_synthesize}\"")
-        wav = model.generate(text_to_synthesize, cfg_weight=.8, exaggeration=.5)
+        wav = model.generate(text_to_synthesize, audio_prompt_path=target_voice, cfg_weight=.8, exaggeration=.5)
         ta.save(output_file_path, wav, model.sr)
         print(f"Audio saved to {output_file_path}")
     except Exception as e:
