@@ -85,7 +85,7 @@ def main():
                 continue
             
             # 4. Define output path in numerical format
-            output_filename = f"{i + 1}.wav"
+            output_filename = f"{i + 1}.mp3"
             absolute_output_file_path = os.path.join(absolute_audio_out_dir, output_filename)
             
             print(f"\nProcessing speech {i + 1}/{len(script_items)}: \"{speech_text[:60]}{'...' if len(speech_text) > 60 else ''}\"")
@@ -94,8 +94,8 @@ def main():
             # 5. Prepare and run the command
             command = [
                 "uv", "run", cli_script_name, 
-                f'"{speech_text}"', 
-                f'"{absolute_output_file_path}"'
+                speech_text,
+                absolute_output_file_path
             ]
             
             stdout_lines = []

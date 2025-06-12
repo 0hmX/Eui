@@ -19,17 +19,24 @@ def generate_python_code_with_gemini(animation_description: str, previous_code: 
     context_prompt = ""
     if previous_code:
         context_prompt += f"""
+#####################################################
 Context from the previous generation:
 Previous Code:
 '''python
 {previous_code}
-'''"""
+'''
+#####################################################
+"""
     if previous_problem:
         context_prompt += f"""
-Problem with previous code/generation: {previous_problem}"""
+#####################################################
+Problem with previous code/generation: 
+{previous_problem}
+#####################################################
+"""
 
     prompt = f"""
-    
+#####################################################
 Generate a complete, runnable Manim Python script for the
 following animation description. The script should be a single scene
 class that inherits from Scene. Do not include any
@@ -37,14 +44,22 @@ explanation, just the code inside a single python code block.
 Optimized for youtube shorts; Keep animations at the center;
 No code diffes that are too big. Always use simple shapes.
 {context_prompt}
+#####################################################
 
-Current Animation Description: {animation_description}
+#####################################################
+Current Animation Description: 
+{animation_description}
+#####################################################
 
 
 make sure the old and new verison have coharance;
 the old COULD BE the starting point for the new scean if present. ALSO NOT DEPENDS ON YOU.
 
-Common Errors to avoid: {common_error}"""
+#####################################################
+Common Errors to avoid: 
+{common_error}
+#####################################################
+"""
 
     data = {
         "contents": [
