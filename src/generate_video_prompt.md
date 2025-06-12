@@ -12,8 +12,8 @@ make a yt-short on the topic " "
 - the script will be deeply techical;
 - max 7 items
 - start with eye catchy graphs and plots
-- no "..." trippel dots in the speech or CAPITAL worlds they break in ai audio
-- take a deep breath and write very meaning full world; do not woory about length; we will speed it up to fit if needed
+- no "..." trippel dots in the speech or CAPITAL words they break in ai audio
+- take a deep breath and write very meaning full words; do not woory about length; we will speed it up to fit if needed
 - Always start by drawing a 2D grid! its like a trick to make people stay
 
 example output
