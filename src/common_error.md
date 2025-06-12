@@ -56,3 +56,7 @@ occurred when trying to fade `NumberLine` labels. This was because `add_labels()
 modifies the `NumberLine` object directly instead of returning a separate group
 of labels. The fix was to manually create the labels, position them using `.n2p()`,
 and collect them in their own distinct `VGroup` for independent animation.
+
+* There was confusion regarding the use of self.camera.animate for chained camera transformations (e.g., self.camera.animate.set_euler_angles(...).scale(...).move_to(...)).
+
+* It was clarified that for combined camera transformations (like changing phi, theta, zoom, and frame_center simultaneously), self.move_camera(...) is the appropriate method, or individual camera attributes should be animated within a self.play() block.
