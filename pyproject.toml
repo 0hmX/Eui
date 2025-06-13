@@ -13,5 +13,9 @@ dependencies = [
     "manim>=0.19.0",
     "moviepy>=2.2.1",
     "mypy>=1.16.0",
+    "pyright>=1.1.402",
+    "pytype>=2024.10.11",
     "requests>=2.32.4",
+    "ty>=0.0.1a9",
+    "typing-extensions>=4.14.0",
 ]

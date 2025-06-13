@@ -3,10 +3,9 @@ import os
 import glob
 import tempfile
 import shutil
-import ffmpeg # Import the ffmpeg-python library
+import ffmpeg
 
 def get_media_duration(media_path):
-    """Gets media duration using ffprobe via ffmpeg-python."""
     try:
         print(f"Probing: {media_path}")
         probe = ffmpeg.probe(media_path)
@@ -22,17 +21,13 @@ def get_media_duration(media_path):
 def create_video_from_script(
     script_filename="script.json",
     output_filename="final_video.mp4",
-    crf=23 # Constant Rate Factor for quality/size. 23 is default. Lower=higher quality, larger file.
+    crf=23
 ):
-    """
-    Generates a video by stitching together segments based on a script.json file
-    using the ffmpeg-python library for processing.
-    """
     script_file_path = os.path.join(os.getcwd(), script_filename)
     audio_base_dir = os.path.join(os.getcwd(), "out", "audio")
     video_base_dir = os.path.join(os.getcwd(), "media", "videos")
     
-    temp_dir = None  # Initialize temp_dir
+    temp_dir = None
 
     try:
         temp_dir = tempfile.mkdtemp(prefix="video_processing_")
@@ -55,7 +50,6 @@ def create_video_from_script(
 
         processed_segment_files = []
 
-        # --- Part 1: Process each segment individually ---
         for i, item in enumerate(script_items):
             print(f"\nProcessing segment {i+1}/{len(script_items)}...")
 
@@ -119,7 +113,6 @@ def create_video_from_script(
             print("No segments were successfully processed. Final video cannot be created.")
             return
 
-        # --- Part 2: Concatenate all processed segments ---
         print("\nConcatenating all processed segments...")
         
         input_nodes = [ffmpeg.input(p) for p in processed_segment_files]
@@ -149,7 +142,6 @@ def create_video_from_script(
             print(f"FFmpeg STDERR: {e.stderr.decode('utf8')}")
             return
 
-        # --- Part 3: Final adjustments (e.g., speed up if over 60s) ---
         total_duration = get_media_duration(concatenated_video_path)
         if total_duration is None:
             print("Failed to get duration of concatenated video. Exiting.")
@@ -167,21 +159,15 @@ def create_video_from_script(
             
             sped_up_final_video_path = os.path.join(temp_dir, f"final_sped_up_{output_filename}")
             
-            input_stream = ffmpeg.input(concatenated_video_path)
-            
             try:
-                # Use a more explicit filter_complex call for the final speed-up
+                input_stream = ffmpeg.input(concatenated_video_path)
+                video_stream = input_stream.video.filter('setpts', f'PTS/{final_speed_factor}')
+                audio_stream = input_stream.audio.filter('atempo', final_speed_factor)
+                
                 (
-                    ffmpeg
-                    .filter_complex( # type: ignore
-                        input_stream,
-                        [
-                            f"[0:v]setpts=PTS/{final_speed_factor}[v]",
-                            f"[0:a]atempo={final_speed_factor}[a]"
-                        ],
-                        map=['[v]', '[a]']
-                    )
-                    .output(
+                    ffmpeg.output(
+                        video_stream,
+                        audio_stream,
                         sped_up_final_video_path,
                         **{'c:v': 'libx264', 'preset': 'medium', 'crf': 22, 'c:a': 'aac', 'b:a': '192k'}
                     )
@@ -193,7 +179,6 @@ def create_video_from_script(
                 print("Failed to speed up final video. Using original concatenated video instead.")
                 print(f"FFmpeg STDERR: {e.stderr.decode('utf8')}")
         
-        # --- Part 4: Finalize and Cleanup ---
         print(f"\nCopying final video to {output_file_abs_path}...")
         shutil.copyfile(final_video_source_path, output_file_abs_path)
         print(f"✅ Successfully created video: {output_file_abs_path}")

@@ -81,7 +81,7 @@ except FileNotFoundError:
     logger.warning(f"Common error file not found at {COMMON_ERROR_FILE_PATH}. Proceeding without it.")
     COMMON_ERROR_CONTENT = "Common error content not available. Please check the path."
 
-MAX_TYPE_CHECK_RETRIES = 1
+MAX_TYPE_CHECK_RETRIES = 2
 
 class ManimScriptGenerationState(TypedDict):
     animation_description: str
@@ -229,7 +229,7 @@ def static_type_check_node(state: ManimScriptGenerationState) -> dict:
                 tmp_script.write(script_to_check)
                 tmp_script_path = tmp_script.name
 
-            command = ["uv", "run", "dmypy", "run", "--", tmp_script_path]
+            command = ["uv", "run", "pyright", tmp_script_path]
             logger.info(f"Running type checker: {' '.join(command)}")
 
             result = subprocess.run(command, capture_output=True, text=True, check=False, shell=False)
