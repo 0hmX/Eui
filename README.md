@@ -1,7 +1,7 @@
 # Eui: The automated content framework
 
 ## Overview
-Eui is an automated content creation framework designed to streamline the production of video content. It leverages the Manim library for generating mathematical animations and the Chatterbox TTS model for voiceovers, facilitating the creation of technical videos, such as YouTube Shorts. The system uses scripts (e.g., [script.json](script.json)) to define content, processes audio using tools like [src/code/audio_tool.py](src/code/audio_tool.py), and renders animations via Manim scripts managed by tools like [src/code/render_manim_tool.py](src/code/render_manim_tool.py).
+Eui is an automated content creation framework designed to streamline the production of video content. It leverages the Manim library for generating mathematical animations and the Chatterbox TTS model for voiceovers, facilitating the creation of technical videos, such as YouTube Shorts. This project is actively used to automate content for the [TheAnkanOfficial YouTube channel](https://www.youtube.com/@TheAnkanOfficial). The system uses scripts (e.g., [script.json](script.json)) to define content, processes audio using tools like [src/code/audio_tool.py](src/code/audio_tool.py), and renders animations via Manim scripts managed by tools like [src/code/render_manim_tool.py](src/code/render_manim_tool.py).
 
 ## How to Install
 
