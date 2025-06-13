@@ -76,7 +76,7 @@ def create_video_from_script(
             audio_duration = get_media_duration(audio_file_path)
             video_duration = get_media_duration(video_file_path)
 
-            if not all([audio_duration, video_duration]) or audio_duration <= 0 or video_duration <= 0:
+            if not all([audio_duration, video_duration]) or audio_duration <= 0 or video_duration <= 0: # type: ignore
                 print(f"Warning: Could not get valid durations for segment {i+1}. Skipping.")
                 continue
 
@@ -91,7 +91,7 @@ def create_video_from_script(
             video_stream = video_input.video
             audio_stream = audio_input.audio
 
-            speed_factor = video_duration / audio_duration
+            speed_factor = video_duration / audio_duration # type: ignore
             scaled_video = video_stream.filter('setpts', f'PTS/{speed_factor}')
 
             try:
@@ -173,7 +173,7 @@ def create_video_from_script(
                 # Use a more explicit filter_complex call for the final speed-up
                 (
                     ffmpeg
-                    .filter_complex(
+                    .filter_complex( # type: ignore
                         input_stream,
                         [
                             f"[0:v]setpts=PTS/{final_speed_factor}[v]",
