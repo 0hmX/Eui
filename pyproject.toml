@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "chatterbox-tts",
     "ffmpeg-python>=0.2.0",
     "google-generativeai>=0.8.5",
     "langchain>=0.3.25",
@@ -18,4 +19,9 @@ dependencies = [
     "requests>=2.32.4",
     "ty>=0.0.1a9",
     "typing-extensions>=4.14.0",
+    "youtube-upload",
 ]
+
+[tool.uv.sources]
+youtube-upload = { path = "submodule/youtube-upload" }
+chatterbox-tts = { path = "submodule/chatterbox" }

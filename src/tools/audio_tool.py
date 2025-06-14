@@ -23,20 +23,16 @@ def stream_output(pipe, output_list, display_prefix=""):
 
 
 def main():
-    # Assuming this script is run from the project root directory 
-    # (e.g., c:\Users\ankan\Documents\Projects\Eui)
-    project_root = os.getcwd() 
+    project_root = os.getcwd()
     
     script_json_filename = "script.json"
     script_json_path = os.path.join(project_root, script_json_filename)
     
-    # Relative path for the audio output directory from the project root
     audio_output_rel_dir = os.path.join("out", "audio")
     absolute_audio_out_dir = os.path.join(project_root, audio_output_rel_dir)
     
-    # Path to the chatterbox directory from the project root
-    chatterbox_dir = os.path.join(project_root, "chatterbox")
-    cli_script_name = "cli_tty.py" # The script to be run within chatterbox_dir
+    cli_script_name = "audo_generator_tool.py"
+    cli_script_path = os.path.join(os.getcwd(), "src", "tools", cli_script_name)
 
     # 1. Create the output directory if it doesn't exist
     try:
@@ -93,7 +89,7 @@ def main():
 
             # 5. Prepare and run the command
             command = [
-                "uv", "run", cli_script_name, 
+                "uv", "run", cli_script_path, 
                 speech_text,
                 absolute_output_file_path
             ]
@@ -103,10 +99,10 @@ def main():
             process = None # Initialize process to None
 
             try:
-                print(f"Executing: {' '.join(command)} (CWD: {chatterbox_dir})")
+                print(f"Executing: {' '.join(command)}")
                 process = subprocess.Popen(
                     command,
-                    cwd=chatterbox_dir,
+                    cwd=os.getcwd(),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
