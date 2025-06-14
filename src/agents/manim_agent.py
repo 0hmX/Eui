@@ -2,78 +2,18 @@ import json
 import os
 import subprocess
 import tempfile
-import logging
-import threading
-from contextlib import contextmanager
 from typing import TypedDict, Optional
 
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 
-_indent_storage = threading.local()
+from ..utils.custom_logging import setup_custom_logging, log_node_ctx
 
-def _get_level():
-    return getattr(_indent_storage, 'level', 0)
-
-def increase_indent():
-    _indent_storage.level = _get_level() + 1
-
-def decrease_indent():
-    _indent_storage.level = max(0, _get_level() - 1)
-
-def get_indent_str():
-    return "    " * _get_level()
-
-logger = logging.getLogger("ManimAgent")
-
-class ColoredIndentedFormatter(logging.Formatter):
-    GREY = "\x1b[38;20m"
-    GREEN = "\x1b[32;20m"
-    YELLOW = "\x1b[33;20m"
-    RED = "\x1b[31;20m"
-    BOLD_RED = "\x1b[31;1m"
-    RESET = "\x1b[0m"
-    
-    BASE_FORMAT = "%(message)s"
-
-    FORMATS = {
-        logging.DEBUG: GREY + BASE_FORMAT + RESET,
-        logging.INFO: GREEN + BASE_FORMAT + RESET,
-        logging.WARNING: YELLOW + BASE_FORMAT + RESET,
-        logging.ERROR: RED + BASE_FORMAT + RESET,
-        logging.CRITICAL: BOLD_RED + BASE_FORMAT + RESET,
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno, self.BASE_FORMAT)
-        formatter = logging.Formatter(log_fmt)
-        indent_str = get_indent_str()
-        original_message = formatter.format(record)
-        indented_message = "\n".join(
-            f"{indent_str}{line}" for line in original_message.splitlines()
-        )
-        return indented_message
-
-def setup_logging():
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    handler.setFormatter(ColoredIndentedFormatter())
-    if not logger.handlers:
-        logger.addHandler(handler)
-        logger.propagate = False
-
-@contextmanager
-def log_node(name: str):
-    logger.info(f"-> Entering Node: {name}")
-    increase_indent()
-    try:
-        yield
-    finally:
-        decrease_indent()
-        logger.info(f"<- Exiting Node: {name}")
+logger = setup_custom_logging(logger_name="ManimAgent")
 
 
-COMMON_ERROR_FILE_PATH = os.path.join(os.getcwd(), "src", "common_error.md")
+COMMON_ERROR_FILE_PATH = os.path.join(os.getcwd(), "prompts", "common_error.md")
 try:
     with open(COMMON_ERROR_FILE_PATH, "r", encoding="utf-8") as f:
         COMMON_ERROR_CONTENT = f.read()
@@ -94,7 +34,7 @@ class ManimScriptGenerationState(TypedDict):
 
 
 def prepare_prompt_node(state: ManimScriptGenerationState) -> dict:
-    with log_node("prepare_prompt"):
+    with log_node_ctx(logger, "prepare_prompt"):
         logger.info("Preparing Prompt...")
         animation_description = state["animation_description"]
         previous_item_code = state.get("previous_code")
@@ -164,7 +104,7 @@ the old COULD BE the starting point for the new scean if present. ALSO NOT DEPEN
 
 
 def call_gemini_node(state: ManimScriptGenerationState) -> dict:
-    with log_node("call_gemini"):
+    with log_node_ctx(logger, "call_gemini"):
         logger.info("Calling Gemini...")
         if not os.getenv("GOOGLE_API_KEY"):
             return {"error_message": "GOOGLE_API_KEY environment variable not set.", "generated_script": None}
@@ -211,7 +151,7 @@ def call_gemini_node(state: ManimScriptGenerationState) -> dict:
 
 
 def static_type_check_node(state: ManimScriptGenerationState) -> dict:
-    with log_node("static_type_check"):
+    with log_node_ctx(logger, "static_type_check"):
         logger.info("Performing Static Type Check...")
         script_to_check = state.get("generated_script")
         current_attempt = state.get("current_retry_attempt", 0)
@@ -274,7 +214,7 @@ def static_type_check_node(state: ManimScriptGenerationState) -> dict:
 
 
 def should_retry_or_end(state: ManimScriptGenerationState) -> str:
-    with log_node("should_retry_or_end"):
+    with log_node_ctx(logger, "should_retry_or_end"):
         logger.info("Deciding Next Step After Type Check...")
         type_check_error = state.get("type_check_error_output")
         attempts_made = state.get("current_retry_attempt", 0)
@@ -315,6 +255,7 @@ manim_script_agent = workflow.compile()
 
 
 def main():
+    load_dotenv()
     script_json_path = os.path.join(os.getcwd(), "script.json")
     output_dir = os.path.join(os.getcwd(), "out")
     if not os.path.exists(output_dir):
@@ -371,7 +312,6 @@ def main():
                     md_file.write("```\n\n")
                     previous_code_for_context = ""
                 elif final_type_check_error and python_code:
-                    # logger.error(f"Script for '{animation_description[:70]}...' generated but FAILED final type check.")
                     md_file.write(f"**Status:** Generated, but FAILED static type checking after {MAX_TYPE_CHECK_RETRIES} retries.\n\n")
                     md_file.write("```python\n")
                     md_file.write(f"# Original animation description: {animation_description}\n")
@@ -405,7 +345,7 @@ def main():
 
 
 if __name__ == "__main__":
-    setup_logging()
+    load_dotenv()
     if not os.getenv("GOOGLE_API_KEY"):
         logger.error("GOOGLE_API_KEY environment variable not set. Please set it before running.")
     else:

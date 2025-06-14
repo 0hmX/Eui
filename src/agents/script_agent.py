@@ -2,80 +2,19 @@ import os
 import json
 import argparse
 import logging
-import threading
-from contextlib import contextmanager
 from typing import TypedDict, List as PyList, Optional
 
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langgraph.graph import StateGraph, END
 
-_indent_storage = threading.local()
+from ..utils.custom_logging import setup_custom_logging, log_node_ctx
 
-def _get_level():
-    return getattr(_indent_storage, 'level', 0)
+logger = setup_custom_logging(logger_name="ScriptGenerator")
 
-def increase_indent():
-    _indent_storage.level = _get_level() + 1
-
-def decrease_indent():
-    _indent_storage.level = max(0, _get_level() - 1)
-
-def get_indent_str():
-    return "    " * _get_level()
-
-logger = logging.getLogger("ScriptGenerator")
-
-class ColoredIndentedFormatter(logging.Formatter):
-    GREY = "\x1b[38;20m"
-    GREEN = "\x1b[32;20m"
-    YELLOW = "\x1b[33;20m"
-    RED = "\x1b[31;20m"
-    BOLD_RED = "\x1b[31;1m"
-    RESET = "\x1b[0m"
-
-    BASE_FORMAT = "%(message)s"
-
-    FORMATS = {
-        logging.DEBUG: GREY + BASE_FORMAT + RESET,
-        logging.INFO: GREEN + BASE_FORMAT + RESET,
-        logging.WARNING: YELLOW + BASE_FORMAT + RESET,
-        logging.ERROR: RED + BASE_FORMAT + RESET,
-        logging.CRITICAL: BOLD_RED + BASE_FORMAT + RESET,
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno, self.BASE_FORMAT)
-        formatter = logging.Formatter(log_fmt)
-        indent_str = get_indent_str()
-        original_message = formatter.format(record)
-        indented_message = "\n".join(
-            f"{indent_str}{line}" for line in original_message.splitlines()
-        )
-        return indented_message
-
-def setup_logging():
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    handler.setFormatter(ColoredIndentedFormatter())
-    if not logger.handlers:
-        logger.addHandler(handler)
-        logger.propagate = False
-
-@contextmanager
-def log_node(name: str):
-    logger.info(f"-> Entering Node: {name}")
-    increase_indent()
-    try:
-        yield
-    finally:
-        decrease_indent()
-        logger.info(f"<- Exiting Node: {name}")
-
-
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-VIDEO_PROMPT_FILE = os.path.join(os.getcwd(), "src", "generate_video_prompt.md")
+VIDEO_PROMPT_FILE = os.path.join(os.getcwd(), "prompts", "generate_video_prompt.md")
 DEFAULT_OUTPUT_SCRIPT_FILE = os.path.join(os.getcwd(), "script.json")
 
 
@@ -88,7 +27,7 @@ class ScriptGenerationState(TypedDict):
 
 
 def load_video_prompt_template(state: ScriptGenerationState) -> ScriptGenerationState:
-    with log_node("load_video_prompt_template"):
+    with log_node_ctx(logger, "load_video_prompt_template"):
         logger.info(f"Loading Video Prompt Template from: {VIDEO_PROMPT_FILE}")
         try:
             with open(VIDEO_PROMPT_FILE, 'r', encoding='utf-8') as f:
@@ -120,7 +59,7 @@ def load_video_prompt_template(state: ScriptGenerationState) -> ScriptGeneration
 
 
 def generate_script(state: ScriptGenerationState) -> ScriptGenerationState:
-    with log_node("generate_script"):
+    with log_node_ctx(logger, "generate_script"): # Use log_node_ctx with logger
         logger.info("Generating Video Script...")
         if state.get("error_message") or not state.get("video_prompt_template_content"):
             logger.warning("Skipping script generation due to previous error or missing prompt content.")
@@ -173,7 +112,7 @@ Your task is to generate a complete video script in JSON format based on the pro
 
 
 def parse_and_validate_script(state: ScriptGenerationState) -> ScriptGenerationState:
-    with log_node("parse_and_validate_script"):
+    with log_node_ctx(logger, "parse_and_validate_script"): # Use log_node_ctx with logger
         logger.info("Parsing and Validating Script...")
         if state.get("error_message") or not state.get("generated_script_str"):
             logger.warning("Skipping parsing due to previous error or no script generated.")
@@ -245,10 +184,11 @@ app = workflow.compile()
 
 
 def main():
-    setup_logging()
-    
-    if not GOOGLE_API_KEY:
-        logger.error("GOOGLE_API_KEY environment variable not set.")
+    load_dotenv() # Load .env file
+
+    # GOOGLE_API_KEY is now loaded from .env
+    if not os.getenv("GOOGLE_API_KEY"):
+        logger.error("GOOGLE_API_KEY environment variable not set. Ensure it's in your .env file or environment.")
         exit(1)
 
     parser = argparse.ArgumentParser(description="Generate a video script JSON using AI.")

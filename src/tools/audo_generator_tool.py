@@ -9,7 +9,6 @@ def main():
     parser = argparse.ArgumentParser(description="Generate audio from text using ChatterboxTTS.")
     parser.add_argument("input_text", type=str, help="The text to synthesize.")
     parser.add_argument("output_path", type=str, help="The file path to save the generated audio.")
-    # ...existing code...
     args = parser.parse_args()
 
     # Automatically detect the best available device
@@ -22,7 +21,7 @@ def main():
 
     print(f"Using device: {device}")
     try:
-        target_voice = os.path.join(os.getcwd(), "target.mp3")
+        target_voice = os.path.join(os.getcwd(), "voice_sample.mp3")
         open(target_voice)
     except Exception as e:
         target_voice = None
