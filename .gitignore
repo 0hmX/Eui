@@ -13,3 +13,5 @@ chatterbox/target.mp3
 .dmypy.json
 .mypy*
 .ruff*
+voice_sample.mp3
+default/eui.json

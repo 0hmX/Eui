@@ -31,7 +31,7 @@ def main():
     audio_output_rel_dir = os.path.join("out", "audio")
     absolute_audio_out_dir = os.path.join(project_root, audio_output_rel_dir)
     
-    cli_script_name = "audo_generator_tool.py"
+    cli_script_name = "audio_generator_tool.py"
     cli_script_path = os.path.join(os.getcwd(), "src", "tools", cli_script_name)
 
     # 1. Create the output directory if it doesn't exist
