@@ -18,7 +18,7 @@ try:
     from src.agents.script_agent import app as script_agent_app, ScriptGenerationState
     from src.agents.manim_agent import generate_manim_code_from_script
     from src.tools.audio_tool import generate_audio_from_script
-    from src.tools.render_manim_tool import render_manim_scenes
+    from src.tools.render_manim_tool import render_manim_scenes, find_scene_name # Added find_scene_name
     from src.tools.video_tool import create_video_from_script
     from src.utils.custom_logging import setup_custom_logging
 except ImportError as e:
@@ -229,6 +229,7 @@ def run_all_pipeline(topic: str, output_dir_base: str) -> bool: # Added return t
         os.makedirs(temp_flat_manim_dir, exist_ok=True)
 
         manim_prep_ok = True
+        script_data = [] # Initialize script_data
         try:
             with open(user_script_json_output_path, 'r', encoding='utf-8') as f:
                 script_data = json.load(f)
@@ -237,7 +238,7 @@ def run_all_pipeline(topic: str, output_dir_base: str) -> bool: # Added return t
             if os.path.exists(user_code_md_output_path):
                 with open(user_code_md_output_path, 'r', encoding='utf-8') as f_code:
                     content = f_code.read()
-                from src.tools.render_manim_tool import find_scene_name # Assumes src.tools.render_manim_tool is in sys.path
+            # find_scene_name is now imported at the top of the file
                 code_pattern = r"```(?:python)?\s*\n(.*?)\n```"
                 manim_code_blocks = re.findall(code_pattern, content, re.DOTALL)
             else:

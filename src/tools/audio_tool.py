@@ -102,6 +102,8 @@ def generate_audio_from_script(script_json_path: str, output_audio_dir: str, aud
         stdout_lines = []
         stderr_lines = []
         process = None
+        stdout_thread = None # Initialize before try block
+        stderr_thread = None # Initialize before try block
 
         try:
             sys.stdout.write(f"Executing: {' '.join(command)}\n")
@@ -115,8 +117,8 @@ def generate_audio_from_script(script_json_path: str, output_audio_dir: str, aud
                 bufsize=1
             )
 
-            stdout_thread = None
-            stderr_thread = None
+            # stdout_thread = None # These were moved up
+            # stderr_thread = None
 
             if process.stdout:
                 stdout_thread = threading.Thread(target=stream_output, args=(process.stdout, stdout_lines))

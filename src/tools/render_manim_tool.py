@@ -6,6 +6,7 @@ import textwrap
 import tempfile
 import threading
 import logging
+import shutil # Added for moving files
 
 # Adjust sys.path to find custom_logging
 # This assumes the script is in Eui/src/tools and custom_logging.py is in Eui/src/utils
