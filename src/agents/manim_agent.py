@@ -1,19 +1,23 @@
 import json
 import os
+import re
 import subprocess
 import tempfile
-from typing import TypedDict, Optional
+import logging
+from typing import TypedDict, Optional, Set
 
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 
 from ..utils.custom_logging import setup_custom_logging, log_node_ctx
+from ..tools.class_defination_tool import extract_class_info_from_file
 
 logger = setup_custom_logging(logger_name="ManimAgent")
 
-
 COMMON_ERROR_FILE_PATH = os.path.join(os.getcwd(), "prompts", "common_error.md")
+CLASS_METHODS_FILE_PATH = os.path.join(os.getcwd(), "class_methods.txt")
+
 try:
     with open(COMMON_ERROR_FILE_PATH, "r", encoding="utf-8") as f:
         COMMON_ERROR_CONTENT = f.read()
@@ -22,6 +26,8 @@ except FileNotFoundError:
     COMMON_ERROR_CONTENT = "Common error content not available. Please check the path."
 
 MAX_TYPE_CHECK_RETRIES = 2
+INITIAL_MODEL_NAME = "gemini-2.5-pro-preview-05-06"
+RETRY_MODEL_NAME = "gemini-2.5-pro-preview-05-06"
 
 class ManimScriptGenerationState(TypedDict):
     animation_description: str
@@ -30,8 +36,40 @@ class ManimScriptGenerationState(TypedDict):
     generated_script: Optional[str]
     error_message: Optional[str]
     type_check_error_output: Optional[str]
+    class_definitions_for_context: Optional[str]
     current_retry_attempt: int
 
+def get_class_definitions_for_context(pyright_error_output: str, logger_instance: logging.Logger) -> str:
+    with log_node_ctx(logger_instance, "get_class_definitions_for_context"):
+        if not os.path.exists(CLASS_METHODS_FILE_PATH):
+            logger_instance.warning(f"Class methods file not found at {CLASS_METHODS_FILE_PATH}. Cannot extract class definitions.")
+            return ""
+
+        class_names_found: Set[str] = set(re.findall(r'for class "([^"]+)"', pyright_error_output, re.IGNORECASE))
+        class_names_found.update(set(re.findall(r'class "([^"]+)"', pyright_error_output, re.IGNORECASE)))
+        
+        if not class_names_found:
+            logger_instance.info("No specific class names found in Pyright error output to look up.")
+            return ""
+
+        logger_instance.info(f"Found potential class names in errors: {class_names_found}")
+        definitions_text_parts = []
+        for class_name in class_names_found:
+            try:
+                logger_instance.info(f"Attempting to extract definition for class: {class_name} from {CLASS_METHODS_FILE_PATH}")
+                class_info = extract_class_info_from_file(CLASS_METHODS_FILE_PATH, class_name)
+                if class_info:
+                    definitions_text_parts.append(f"Definition for class '{class_name}':\n```python\n{class_info}\n```\n")
+                    logger_instance.info(f"Successfully extracted definition for {class_name}.")
+                else:
+                    logger_instance.info(f"No definition found for class {class_name} in {CLASS_METHODS_FILE_PATH}.")
+            except Exception as e:
+                logger_instance.error(f"Error extracting definition for class {class_name}: {e}")
+        
+        if not definitions_text_parts:
+            return ""
+            
+        return "\n#####################################################\nRelevant Class Definitions for Context:\n" + "\n".join(definitions_text_parts) + "#####################################################\n"
 
 def prepare_prompt_node(state: ManimScriptGenerationState) -> dict:
     with log_node_ctx(logger, "prepare_prompt"):
@@ -40,6 +78,7 @@ def prepare_prompt_node(state: ManimScriptGenerationState) -> dict:
         previous_item_code = state.get("previous_code")
         current_attempt_script = state.get("generated_script")
         type_check_feedback = state.get("type_check_error_output")
+        class_definitions_context = state.get("class_definitions_for_context")
 
         context_prompt_parts = []
 
@@ -59,10 +98,16 @@ Static Type Checker Output (Errors):
 '''
 {type_check_feedback}
 '''
-Please analyze these errors and provide a corrected Manim script.
+""")
+            if class_definitions_context:
+                context_prompt_parts.append(class_definitions_context)
+            
+            context_prompt_parts.append(f"""
+Please analyze these errors and the provided class definitions (if any) and provide a corrected Manim script.
 Ensure the new script is complete, runnable, and addresses these type errors.
 The original animation description is: "{animation_description}"
 #####################################################""")
+
         elif previous_item_code:
             context_prompt_parts.append(f"""
 #####################################################
@@ -85,8 +130,8 @@ Common Errors to avoid (Review these carefully):
 #####################################################
 Generate a complete, runnable Manim Python script for the
 following animation description. The script should be a single scene
-class that inherits from Scene. Do not include any
-explanation, just the code inside a single python code block.
+class that inherits from Scene or a relevant Manim base Scene class (e.g., MovingCameraScene, ZoomedScene). 
+Do not include any explanation, just the code inside a single python code block.
 Optimized for youtube shorts; Keep animations at the center;
 No code diffes that are too big. Always use simple shapes.
 {final_context_prompt}
@@ -100,8 +145,7 @@ Current Animation Description:
 make sure the old and new verison have coharance;
 the old COULD BE the starting point for the new scean if present. ALSO NOT DEPENDS ON YOU.
 """
-        return {"constructed_prompt": prompt, "type_check_error_output": None}
-
+        return {"constructed_prompt": prompt, "type_check_error_output": None, "class_definitions_for_context": None}
 
 def call_gemini_node(state: ManimScriptGenerationState) -> dict:
     with log_node_ctx(logger, "call_gemini"):
@@ -113,9 +157,14 @@ def call_gemini_node(state: ManimScriptGenerationState) -> dict:
         if not prompt:
             return {"error_message": "Prompt not constructed.", "generated_script": None}
 
-        model_name_for_langchain = "gemini-2.5-pro-preview-06-05"
-        logger.info(f"Using Gemini model with Langchain: {model_name_for_langchain}")
-
+        current_retry_attempt = state.get("current_retry_attempt", 0)
+        if current_retry_attempt == 0:
+            model_name_for_langchain = INITIAL_MODEL_NAME
+            logger.info(f"Using Initial Gemini model: {model_name_for_langchain}")
+        else:
+            model_name_for_langchain = RETRY_MODEL_NAME
+            logger.info(f"Using Retry Gemini model: {model_name_for_langchain}")
+        
         llm = ChatGoogleGenerativeAI(model=model_name_for_langchain)
 
         logger.info(f"Attempting Gemini API call for animation: {state['animation_description'][:70]}...")
@@ -146,21 +195,22 @@ def call_gemini_node(state: ManimScriptGenerationState) -> dict:
 
         except Exception as e:
             error_msg = f"Error calling Gemini or processing response via Langchain: {e}"
-            logger.error(error_msg)
+            logger.error(error_msg, exc_info=True)
             return {"error_message": error_msg, "generated_script": None}
-
 
 def static_type_check_node(state: ManimScriptGenerationState) -> dict:
     with log_node_ctx(logger, "static_type_check"):
         logger.info("Performing Static Type Check...")
         script_to_check = state.get("generated_script")
         current_attempt = state.get("current_retry_attempt", 0)
+        class_definitions_for_retry = None
 
         if not script_to_check:
             logger.warning("No script generated to type check.")
             return {
                 "error_message": state.get("error_message", "No script available for type checking."),
                 "type_check_error_output": None,
+                "class_definitions_for_context": None,
                 "current_retry_attempt": current_attempt
             }
 
@@ -181,37 +231,44 @@ def static_type_check_node(state: ManimScriptGenerationState) -> dict:
                 return {
                     "generated_script": script_to_check,
                     "type_check_error_output": None,
+                    "class_definitions_for_context": None,
                     "current_retry_attempt": current_attempt,
                     "error_message": None
                 }
             else:
-                error_message = (result.stderr + "\n\n#######################\n\n" + result.stdout)
+                error_output = (result.stderr + "\n\n#######################\n\n" + result.stdout).strip()
                 logger.warning(f"Type check failed with status code {result.returncode}.")
+                class_definitions_for_retry = get_class_definitions_for_context(error_output, logger)
+                
                 return {
                     "generated_script": script_to_check,
-                    "type_check_error_output": (error_message or "Type checker returned an error but no stderr."),
+                    "type_check_error_output": (error_output or "Type checker returned an error but no output."),
+                    "class_definitions_for_context": class_definitions_for_retry,
                     "current_retry_attempt": current_attempt + 1,
-                    "error_message": None
+                    "error_message": None 
                 }
         except FileNotFoundError:
-            error_msg = "Error: 'uv' or 'dmypy' command not found. Make sure it's installed and in your PATH."
+            error_msg = "Error: 'uv' or 'pyright' command not found. Make sure it's installed and in your PATH."
             logger.error(error_msg)
+            class_definitions_for_retry = get_class_definitions_for_context(error_msg, logger) if script_to_check else None
             return {
                 "generated_script": script_to_check,
                 "error_message": error_msg,
                 "type_check_error_output": error_msg,
+                "class_definitions_for_context": class_definitions_for_retry,
                 "current_retry_attempt": current_attempt + 1
             }
         except Exception as e:
             error_msg = f"An unexpected error occurred during type checking: {e}"
-            logger.error(error_msg)
+            logger.error(error_msg, exc_info=True)
+            class_definitions_for_retry = get_class_definitions_for_context(error_msg, logger) if script_to_check else None
             return {
                 "generated_script": script_to_check,
                 "error_message": error_msg,
                 "type_check_error_output": error_msg,
+                "class_definitions_for_context": class_definitions_for_retry,
                 "current_retry_attempt": current_attempt + 1
             }
-
 
 def should_retry_or_end(state: ManimScriptGenerationState) -> str:
     with log_node_ctx(logger, "should_retry_or_end"):
@@ -220,17 +277,16 @@ def should_retry_or_end(state: ManimScriptGenerationState) -> str:
         attempts_made = state.get("current_retry_attempt", 0)
 
         if not type_check_error:
-            logger.info("Type check passed or no error reported. Ending.")
+            logger.info("No type check error reported or no script to check. Ending.")
             return END
 
-        logger.warning(f"Type check failed. Attempts made so far: {attempts_made-1 if attempts_made > 0 else 0}. Max retries: {MAX_TYPE_CHECK_RETRIES}.")
+        logger.warning(f"Type check failed. Attempts made so far: {attempts_made -1}. Max retries: {MAX_TYPE_CHECK_RETRIES}.")
         if attempts_made > MAX_TYPE_CHECK_RETRIES:
             logger.error(f"Max retries ({MAX_TYPE_CHECK_RETRIES}) reached. Ending current item processing.")
             return END
         else:
             logger.info(f"Proceeding to retry generation (next attempt will be {attempts_made}).")
             return "prepare_prompt"
-
 
 workflow = StateGraph(ManimScriptGenerationState)
 
@@ -252,7 +308,6 @@ workflow.add_conditional_edges(
 )
 
 manim_script_agent = workflow.compile()
-
 
 def main():
     load_dotenv()
@@ -292,6 +347,7 @@ def main():
                     generated_script=None,
                     error_message=None,
                     type_check_error_output=None,
+                    class_definitions_for_context=None,
                     current_retry_attempt=0
                 )
 
@@ -312,14 +368,14 @@ def main():
                     md_file.write("```\n\n")
                     previous_code_for_context = ""
                 elif final_type_check_error and python_code:
-                    md_file.write(f"**Status:** Generated, but FAILED static type checking after {MAX_TYPE_CHECK_RETRIES} retries.\n\n")
+                    md_file.write(f"**Status:** Generated, but FAILED static type checking after {final_state.get('current_retry_attempt', MAX_TYPE_CHECK_RETRIES+1)-1} retries.\n\n")
                     md_file.write("```python\n")
                     md_file.write(f"# Original animation description: {animation_description}\n")
                     md_file.write(f"# SCRIPT FAILED TYPE CHECKING. LAST ATTEMPT:\n\n")
                     md_file.write(python_code)
-                    md_file.write(f"\n\n# --- MYPY ERRORS (from last attempt) ---\n# ")
+                    md_file.write(f"\n\n# --- PYRIGHT ERRORS (from last attempt) ---\n# ")
                     md_file.write("\n# ".join(final_type_check_error.splitlines()))
-                    md_file.write("\n# --- END MYPY ERRORS ---")
+                    md_file.write("\n# --- END PYRIGHT ERRORS ---")
                     md_file.write("\n```\n\n")
                     previous_code_for_context = python_code
                 elif python_code:
@@ -342,7 +398,6 @@ def main():
                 logger.warning(f"No 'animation-description' found for item {index + 1}.")
 
     logger.info(f"\nProcessing complete. Manim Python code snippets (with type checking attempts) appended to {code_md_path}")
-
 
 if __name__ == "__main__":
     load_dotenv()

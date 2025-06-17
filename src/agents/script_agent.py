@@ -70,11 +70,15 @@ def generate_script(state: ScriptGenerationState) -> ScriptGenerationState:
 
         llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro-preview-06-05", temperature=0.7)
 
-        prompt_text = f"""
-You are an expert scriptwriter for technical YouTube Shorts.
-Your task is to generate a complete video script in JSON format based on the provided topic and the following detailed guidelines.
+        json_exp = '''{{
+		"music-description": "<replace>",
+		"speech": "<replace>",
+		"animation-description": "<replace>",
+		"duration": "<replace>s"
+	}}'''
 
-**Topic for the YouTube Short:**
+        prompt_text = f"""
+**Topic**
 "{topic}"
 
 **Guidelines for Script Generation:**
@@ -88,6 +92,15 @@ Your task is to generate a complete video script in JSON format based on the pro
 - Ensure "speech" is optimized for AI TTS (like Chatterbox): avoid "..." ellipses and full ALL CAPS words/phrases unless absolutely necessary for acronyms.
 - Ensure "animation-description" is highly descriptive for Manim, assumes simple shapes/text, and that each animation scene starts by drawing a 2D grid.
 - Adhere to all constraints mentioned in the guidelines, such as tone, technical depth, item count, etc.
+
+**Example output**
+```json
+[
+	...,
+	{json_exp},
+	...
+]
+```
 """
 
         prompt = ChatPromptTemplate.from_messages([

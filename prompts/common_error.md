@@ -85,3 +85,9 @@ These errors typically occur when using syntax or features from a newer Manim ve
     2.  Position them correctly relative to the `NumberLine` using `number_line.n2p(number_value)` to get the point for each label.
     3.  Collect these manually created labels into their own `VGroup`.
     4.  Animate this dedicated `VGroup` of labels.
+
+## 6. No global config object
+*   **Core Problem:** Thier is not global `config` named global var to store infomation.
+
+## 7. You can not set custom ratio for sceann or custom resolutio size
+*   **Core Problem:** This can not be done buy the code

@@ -15,3 +15,5 @@ chatterbox/target.mp3
 .ruff*
 voice_sample.mp3
 default/eui.json
+class_methods.txt
+module_signatures.txt
