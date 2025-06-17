@@ -309,16 +309,21 @@ workflow.add_conditional_edges(
 
 manim_script_agent = workflow.compile()
 
-def main():
-    load_dotenv()
-    script_json_path = os.path.join(os.getcwd(), "script.json")
-    output_dir = os.path.join(os.getcwd(), "out")
+def generate_manim_code_from_script(script_json_path: str, output_code_md_path: str):
+    """
+    Generates Manim Python code from a script JSON file and writes it to a Markdown file.
+
+    Args:
+        script_json_path: Path to the input script JSON file.
+        output_code_md_path: Path to the output Markdown file for the generated code.
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_code_md_path)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         logger.info(f"Created output directory: {output_dir}")
-    code_md_path = os.path.join(output_dir, "code.md")
 
-    with open(code_md_path, 'w', encoding='utf-8') as md_file:
+    with open(output_code_md_path, 'w', encoding='utf-8') as md_file:
         md_file.write("# Generated Manim Code (with Type Checking)\n\n")
         md_file.write(f"This file contains Manim Python code snippets generated based on animation descriptions. Each script attempts to pass static type checking up to {MAX_TYPE_CHECK_RETRIES} retries.\n\n")
 
@@ -327,18 +332,24 @@ def main():
             script_data = json.load(f)
     except FileNotFoundError:
         logger.error(f"The script file {script_json_path} was not found.")
-        return
+        return False # Indicate failure
     except json.JSONDecodeError:
         logger.error(f"Could not decode JSON from {script_json_path}.")
-        return
+        return False # Indicate failure
 
     previous_code_for_context = ""
+    all_successful = True
 
-    with open(code_md_path, 'a', encoding='utf-8') as md_file:
+    with open(output_code_md_path, 'a', encoding='utf-8') as md_file:
         for index, item in enumerate(script_data):
             animation_description = item.get("animation-description")
+            # In the original script, 'scene_number' was part of the item, but here we use 'index'
+            # If 'scene_number' is crucial, the input JSON structure or processing needs adjustment.
+            # For now, using (index + 1) as scene identifier.
+            scene_identifier = item.get("scene_number", index + 1)
+
             if animation_description:
-                logger.info(f"\nProcessing animation description {index + 1}/{len(script_data)} with LangGraph agent...")
+                logger.info(f"\nProcessing animation description for scene {scene_identifier} ({index + 1}/{len(script_data)}) with LangGraph agent...")
 
                 agent_input = ManimScriptGenerationState(
                     animation_description=animation_description,
@@ -357,17 +368,19 @@ def main():
                 agent_llm_error = final_state.get("error_message")
                 final_type_check_error = final_state.get("type_check_error_output")
 
-                md_file.write(f"### Animation Scene {index + 1}\n")
+                md_file.write(f"### Animation Scene {scene_identifier}\n")
                 md_file.write(f"**Description:** {animation_description}\n\n")
 
                 if agent_llm_error:
-                    logger.error(f"Agent returned a critical error: {agent_llm_error}")
+                    logger.error(f"Agent returned a critical error for scene {scene_identifier}: {agent_llm_error}")
                     md_file.write(f"**Status:** Generation failed due to agent error.\n\n")
                     md_file.write("```text\n")
                     md_file.write(f"# Error from Agent: {agent_llm_error}\n")
                     md_file.write("```\n\n")
                     previous_code_for_context = ""
+                    all_successful = False
                 elif final_type_check_error and python_code:
+                    logger.warning(f"Script for scene {scene_identifier} FAILED static type checking after {final_state.get('current_retry_attempt', MAX_TYPE_CHECK_RETRIES+1)-1} retries.")
                     md_file.write(f"**Status:** Generated, but FAILED static type checking after {final_state.get('current_retry_attempt', MAX_TYPE_CHECK_RETRIES+1)-1} retries.\n\n")
                     md_file.write("```python\n")
                     md_file.write(f"# Original animation description: {animation_description}\n")
@@ -377,31 +390,28 @@ def main():
                     md_file.write("\n# ".join(final_type_check_error.splitlines()))
                     md_file.write("\n# --- END PYRIGHT ERRORS ---")
                     md_file.write("\n```\n\n")
-                    previous_code_for_context = python_code
+                    previous_code_for_context = python_code # Still provide for context, even if failed
+                    all_successful = False # Mark overall as not fully successful
                 elif python_code:
-                    logger.info(f"Script for '{animation_description[:70]}...' generated successfully (passed type checks).")
+                    logger.info(f"Script for scene '{scene_identifier}' ('{animation_description[:70]}...') generated successfully (passed type checks).")
                     md_file.write(f"**Status:** Generation successful (passed type checks).\n\n")
                     md_file.write("```python\n")
                     md_file.write(python_code)
                     md_file.write("\n```\n\n")
                     previous_code_for_context = python_code
                 else:
-                    logger.error(f"Agent did not return a script for '{animation_description[:70]}...' and no explicit error message was set in final state.")
+                    logger.error(f"Agent did not return a script for scene {scene_identifier} ('{animation_description[:70]}...') and no explicit error message was set in final state.")
                     md_file.write(f"**Status:** Generation failed (no script produced, no specific error).\n\n")
                     md_file.write("```text\n")
                     md_file.write("# Error: No script generated by agent and no specific error message in final state.\n")
                     md_file.write("```\n\n")
                     previous_code_for_context = ""
+                    all_successful = False
 
-                logger.info(f"Appended result for scene {index + 1} to {code_md_path}")
+                logger.info(f"Appended result for scene {scene_identifier} to {output_code_md_path}")
             else:
-                logger.warning(f"No 'animation-description' found for item {index + 1}.")
+                logger.warning(f"No 'animation-description' found for item {index + 1} in {script_json_path}.")
+                all_successful = False # Missing description is a form of failure for this item
 
-    logger.info(f"\nProcessing complete. Manim Python code snippets (with type checking attempts) appended to {code_md_path}")
-
-if __name__ == "__main__":
-    load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        logger.error("GOOGLE_API_KEY environment variable not set. Please set it before running.")
-    else:
-        main()
+    logger.info(f"\nProcessing complete. Manim Python code snippets (with type checking attempts) appended to {output_code_md_path}")
+    return all_successful

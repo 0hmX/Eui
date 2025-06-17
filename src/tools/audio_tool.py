@@ -19,28 +19,31 @@ def stream_output(pipe, output_list, display_prefix=""):
             pipe.close()
     except Exception as e:
         # Handle potential errors during stream reading, e.g., if pipe closes unexpectedly
-        print(f"Error reading stream ({display_prefix or 'stdout'}): {e}", file=sys.stderr)
+        # Use a logger if available, otherwise print to stderr
+        sys.stderr.write(f"Error reading stream ({display_prefix or 'stdout'}): {e}\n")
 
+def generate_audio_from_script(script_json_path: str, output_audio_dir: str, audio_generator_tool_script_path: str, current_project_root: str):
+    """
+    Generates audio files from a script JSON file using an external audio generation tool.
 
-def main():
-    project_root = os.getcwd()
-    
-    script_json_filename = "script.json"
-    script_json_path = os.path.join(project_root, script_json_filename)
-    
-    audio_output_rel_dir = os.path.join("out", "audio")
-    absolute_audio_out_dir = os.path.join(project_root, audio_output_rel_dir)
-    
-    cli_script_name = "audio_generator_tool.py"
-    cli_script_path = os.path.join(os.getcwd(), "src", "tools", cli_script_name)
+    Args:
+        script_json_path: Path to the input script JSON file.
+        output_audio_dir: Directory to save the generated MP3 files.
+        audio_generator_tool_script_path: Absolute path to the audio_generator_tool.py script.
+        current_project_root: The root directory of the project, used as CWD for subprocess.
+
+    Returns:
+        True if all audio files were generated successfully, False otherwise.
+    """
+    all_successful = True
 
     # 1. Create the output directory if it doesn't exist
     try:
-        os.makedirs(absolute_audio_out_dir, exist_ok=True)
-        print(f"Output directory ensured at: {absolute_audio_out_dir}")
+        os.makedirs(output_audio_dir, exist_ok=True)
+        sys.stdout.write(f"Output directory ensured at: {output_audio_dir}\n")
     except OSError as e:
-        print(f"Critical error: Could not create directory {absolute_audio_out_dir}: {e}")
-        sys.exit(1)
+        sys.stderr.write(f"Critical error: Could not create directory {output_audio_dir}: {e}\n")
+        return False
 
     # 2. Open and read the script.json file
     script_items = []
@@ -49,142 +52,114 @@ def main():
             content = json.load(f)
         if isinstance(content, list):
             script_items = content
-            print(f"Successfully read {len(script_items)} entries from {script_json_filename}.")
+            sys.stdout.write(f"Successfully read {len(script_items)} entries from {os.path.basename(script_json_path)}.\n")
         else:
-            print(f"Error: Content of {script_json_filename} is not a list of items as expected.")
-            sys.exit(1)
+            sys.stderr.write(f"Error: Content of {os.path.basename(script_json_path)} is not a list of items as expected.\n")
+            return False
     except FileNotFoundError:
-        print(f"Critical error: {script_json_filename} not found at {script_json_path}")
-        sys.exit(1)
+        sys.stderr.write(f"Critical error: {os.path.basename(script_json_path)} not found at {script_json_path}\n")
+        return False
     except json.JSONDecodeError as e:
-        print(f"Critical error: Could not decode JSON from {script_json_filename}: {e}")
-        sys.exit(1)
+        sys.stderr.write(f"Critical error: Could not decode JSON from {os.path.basename(script_json_path)}: {e}\n")
+        return False
     except Exception as e:
-        print(f"Critical error: An unexpected error occurred while reading {script_json_filename}: {e}")
-        sys.exit(1)
+        sys.stderr.write(f"Critical error: An unexpected error occurred while reading {os.path.basename(script_json_path)}: {e}\n")
+        return False
 
     if not script_items:
-        print(f"No items found in {script_json_filename}. Nothing to process.")
-        sys.exit(0)
+        sys.stdout.write(f"No items found in {os.path.basename(script_json_path)}. Nothing to process.\n")
+        return True # No items to process is not an error in itself for this function
 
     # 3. Process each script item
-    try:
-        for i, item_entry in enumerate(script_items):
-            if not isinstance(item_entry, dict):
-                print(f"Warning: Entry {i+1} in {script_json_filename} is not a dictionary. Skipping.")
-                continue
+    for i, item_entry in enumerate(script_items):
+        if not isinstance(item_entry, dict):
+            sys.stderr.write(f"Warning: Entry {i+1} in {os.path.basename(script_json_path)} is not a dictionary. Skipping.\n")
+            all_successful = False
+            continue
+
+        speech_text = item_entry.get("speech")
+        scene_number = item_entry.get("scene_number", i + 1) # Use scene_number if present, else index
+
+        if not speech_text or not isinstance(speech_text, str):
+            sys.stderr.write(f"Warning: Entry for scene {scene_number} in {os.path.basename(script_json_path)} does not have a valid 'speech' string. Skipping.\n")
+            all_successful = False
+            continue
+
+        # 4. Define output path using scene_number or index
+        output_filename = f"{scene_number}.mp3"
+        absolute_output_file_path = os.path.join(output_audio_dir, output_filename)
+
+        sys.stdout.write(f"\nProcessing speech for scene {scene_number} ({i+1}/{len(script_items)}): \"{speech_text[:60]}{'...' if len(speech_text) > 60 else ''}\"\n")
+        sys.stdout.write(f"Target audio file: {absolute_output_file_path}\n")
+
+        # 5. Prepare and run the command
+        command = [
+            "uv", "run", audio_generator_tool_script_path,
+            speech_text,
+            absolute_output_file_path
+        ]
+
+        stdout_lines = []
+        stderr_lines = []
+        process = None
+
+        try:
+            sys.stdout.write(f"Executing: {' '.join(command)}\n")
+            process = subprocess.Popen(
+                command,
+                cwd=current_project_root, # Use specified project root as CWD
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding='utf-8',
+                bufsize=1
+            )
+
+            stdout_thread = None
+            stderr_thread = None
+
+            if process.stdout:
+                stdout_thread = threading.Thread(target=stream_output, args=(process.stdout, stdout_lines))
+                stdout_thread.start()
+
+            if process.stderr:
+                stderr_thread = threading.Thread(target=stream_output, args=(process.stderr, stderr_lines, "stderr"))
+                stderr_thread.start()
+
+            if stdout_thread: stdout_thread.join()
+            if stderr_thread: stderr_thread.join()
             
-            speech_text = item_entry.get("speech")
+            process.wait()
 
-            if not speech_text or not isinstance(speech_text, str):
-                print(f"Warning: Entry {i+1} in {script_json_filename} does not have a valid 'speech' string. Skipping.")
-                continue
-            
-            # 4. Define output path in numerical format
-            output_filename = f"{i + 1}.mp3"
-            absolute_output_file_path = os.path.join(absolute_audio_out_dir, output_filename)
-            
-            print(f"\nProcessing speech {i + 1}/{len(script_items)}: \"{speech_text[:60]}{'...' if len(speech_text) > 60 else ''}\"")
-            print(f"Target audio file: {absolute_output_file_path}")
+            if process.returncode == 0:
+                sys.stdout.write(f"\nSuccessfully generated: {absolute_output_file_path}\n")
+            else:
+                sys.stderr.write(f"\nERROR: Failed to generate audio for scene {scene_number}: \"{speech_text[:60]}...\"\n")
+                sys.stderr.write(f"Command failed with exit code {process.returncode}: {' '.join(command)}\n")
+                all_successful = False
 
-            # 5. Prepare and run the command
-            command = [
-                "uv", "run", cli_script_path, 
-                speech_text,
-                absolute_output_file_path
-            ]
-            
-            stdout_lines = []
-            stderr_lines = []
-            process = None # Initialize process to None
-
-            try:
-                print(f"Executing: {' '.join(command)}")
-                process = subprocess.Popen(
-                    command,
-                    cwd=os.getcwd(),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding='utf-8',
-                    bufsize=1 
-                )
-
-                stdout_thread = None
-                stderr_thread = None
-
-                if process.stdout:
-                    stdout_thread = threading.Thread(target=stream_output, args=(process.stdout, stdout_lines))
-                    stdout_thread.start()
-
-                if process.stderr:
-                    stderr_thread = threading.Thread(target=stream_output, args=(process.stderr, stderr_lines, "stderr"))
-                    stderr_thread.start()
-
-                # Wait for threads to finish (which means pipes have been closed)
-                if stdout_thread:
-                    stdout_thread.join()
-                if stderr_thread:
-                    stderr_thread.join()
-                
-                process.wait() # Wait for the subprocess to complete
-
-                if process.returncode == 0:
-                    print(f"\nSuccessfully generated: {absolute_output_file_path}")
-                else:
-                    print(f"\nERROR: Failed to generate audio for: \"{speech_text[:60]}...\"")
-                    print(f"Command failed with exit code {process.returncode}: {' '.join(command)}")
-                    # Output was already streamed in real-time
-
-            except FileNotFoundError:
-                print(f"CRITICAL ERROR: 'uv' command not found. Ensure 'uv' is installed and in PATH.")
-                print(f"Failed to generate audio for: \"{speech_text[:60]}...\"")
-                print("Aborting further processing.")
-                if process: 
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
-                    process.terminate()
+        except FileNotFoundError:
+            sys.stderr.write(f"CRITICAL ERROR: 'uv' command not found or '{audio_generator_tool_script_path}' not found. Ensure 'uv' is installed and paths are correct.\n")
+            sys.stderr.write(f"Failed to generate audio for scene {scene_number}: \"{speech_text[:60]}...\"\n")
+            all_successful = False
+            # Do not sys.exit, let the caller decide if it's fatal for the whole pipeline
+            return False # This is a critical failure for this function call
+        except Exception as e:
+            sys.stderr.write(f"An unexpected error occurred while processing speech for scene {scene_number} (\"{speech_text[:60]}...\"): {e}\n")
+            all_successful = False
+        finally:
+            if process and process.poll() is None:
+                sys.stdout.write(f"\nEnsuring active subprocess for speech {scene_number} is terminated...\n")
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    sys.stderr.write(f"Subprocess for speech {scene_number} did not terminate gracefully, killing.\n")
+                    process.kill()
                     process.wait()
-                sys.exit(1)
-            except Exception as e: 
-                print(f"An unexpected error occurred while processing speech {i + 1} (\"{speech_text[:60]}...\"): {e}")
-                if process: 
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
-                    process.terminate()
-                    process.wait()
-                # Continue to the next item or sys.exit(1) if critical
-            finally:
-                if process and process.poll() is None: 
-                    print(f"\nEnsuring active subprocess for speech {i+1} is terminated...")
-                    if stdout_thread and stdout_thread.is_alive(): # type: ignore
-                        # stdout_thread.join(timeout=1) # Give a chance to finish
-                        pass # Pipe should close on process.terminate()
-                    if stderr_thread and stderr_thread.is_alive(): # type: ignore
-                        # stderr_thread.join(timeout=1)
-                        pass # Pipe should close on process.terminate()
-                    
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5) 
-                    except subprocess.TimeoutExpired:
-                        print(f"Subprocess for speech {i+1} did not terminate gracefully, killing.")
-                        process.kill()
-                        process.wait()
-                    print("Subprocess terminated.")
-                    # Ensure threads are joined after process termination attempt
-                    if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1) # type: ignore
-                    if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1) # type: ignore
-
+                sys.stdout.write("Subprocess terminated.\n")
+                if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1)
+                if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1)
                         
-        print("\nScript finished. All speech processing tasks have been attempted.")
-
-    except KeyboardInterrupt:
-        print("\n\nCtrl+C detected. Terminating script and any active subprocesses...")
-        # The 'finally' block within the loop should handle individual subprocess termination.
-        # If a process is active, its 'finally' block will be triggered upon thread interruption.
-        print("Script terminated by user.")
-        sys.exit(130) # Standard exit code for Ctrl+C
-
-if __name__ == "__main__":
-    main()
+    sys.stdout.write("\nAudio generation process finished. All speech processing tasks have been attempted.\n")
+    return all_successful

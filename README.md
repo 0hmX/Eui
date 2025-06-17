@@ -136,6 +136,109 @@ After generating audio and video segments for each scene, you would typically co
 - Concatenate all combined scenes into the final video.
 This step might require a video editing tool like `ffmpeg` or a custom script.
 
+## Eui CLI Tool (`bin/eui.py`)
+
+The Eui CLI tool (`bin/eui.py`) provides a unified command-line interface to orchestrate the entire video creation workflow, from generating a script to rendering the final video. It simplifies the process by consolidating the individual steps described above.
+
+### Setup
+
+1.  **Project Dependencies**: Ensure you have followed the main project [Installation](#how-to-install) steps, particularly installing dependencies with `uv sync`. The CLI tool uses the same environment.
+2.  **Environment Variables**: The CLI tool, especially commands involving content generation (like `generate-script`, `generate-manim-code`, and `all`), requires a `GOOGLE_API_KEY`. Make sure you have a `.env` file in the project root as described in the main installation instructions.
+
+### Usage
+
+The CLI tool is located at `bin/eui.py`. You can run it using:
+
+```bash
+python bin/eui.py <command> [options]
+```
+
+Or, if you make it executable (`chmod +x bin/eui.py`):
+
+```bash
+./bin/eui.py <command> [options]
+```
+
+To see all available commands and their general help:
+```bash
+python bin/eui.py --help
+```
+To see help for a specific command:
+```bash
+python bin/eui.py <command> --help
+```
+
+### Commands
+
+#### `generate-script`
+Generates a script JSON file from a given topic.
+
+*   **Arguments:**
+    *   `--topic <topic>`: (Required) The topic for the video.
+    *   `--output <path>`: (Optional) Path to save the generated script JSON file. Defaults to `output/script.json`.
+*   **Example:**
+    ```bash
+    python bin/eui.py generate-script --topic "The Science of Black Holes" --output my_project/black_holes_script.json
+    ```
+
+#### `generate-manim-code`
+Generates Manim Python code (as Markdown) from a script JSON file.
+
+*   **Arguments:**
+    *   `--script <path>`: (Optional) Path to the input script JSON file. Defaults to `output/script.json`.
+    *   `--output <path>`: (Optional) Path to save the generated Manim code Markdown file. Defaults to `output/code.md`.
+*   **Example:**
+    ```bash
+    python bin/eui.py generate-manim-code --script my_project/black_holes_script.json --output my_project/manim_code.md
+    ```
+
+#### `generate-audio`
+Generates audio files from the speech segments in a script JSON file.
+
+*   **Arguments:**
+    *   `--script <path>`: (Optional) Path to the input script JSON file. Defaults to `output/script.json`.
+    *   `--output_dir <directory>`: (Optional) Directory to save the generated audio files (e.g., `1.mp3`, `2.mp3`). Defaults to `output/audio_files/`.
+*   **Example:**
+    ```bash
+    python bin/eui.py generate-audio --script my_project/black_holes_script.json --output_dir my_project/audio_clips
+    ```
+
+#### `render-video`
+Renders Manim video scenes from a Manim code Markdown file.
+
+*   **Arguments:**
+    *   `--code <path>`: (Optional) Path to the input Manim code Markdown file. Defaults to `output/code.md`.
+    *   `--media_dir <directory>`: (Optional) Directory to save the rendered Manim media files (e.g., `SceneClassName.mp4`). Defaults to `output/manim_media_output/`.
+*   **Example:**
+    ```bash
+    python bin/eui.py render-video --code my_project/manim_code.md --media_dir my_project/rendered_scenes
+    ```
+
+#### `create-final-video`
+Creates the final video by stitching together audio and Manim video scenes based on a script JSON file.
+**Note**: This command expects the `--manim_input_dir` to contain video files that are already numbered according to the script order (e.g., `1.mp4`, `2.mp4`). The `all` command handles this renaming automatically.
+
+*   **Arguments:**
+    *   `--script <path>`: (Optional) Path to the input script JSON file. Defaults to `output/script.json`.
+    *   `--audio_input_dir <directory>`: (Optional) Directory containing numbered audio files (e.g., `1.mp3`). Defaults to `output/audio_files/`.
+    *   `--manim_input_dir <directory>`: (Optional) Directory containing **numbered** Manim video scene files (e.g., `1.mp4`, `2.mp4`). Defaults to `output/manim_media_output/`.
+    *   `--output <path>`: (Optional) Path to save the final combined video file. Defaults to `output/final_video.mp4`.
+*   **Example:**
+    ```bash
+    python bin/eui.py create-final-video --script my_project/script.json --audio_input_dir my_project/audio_clips --manim_input_dir my_project/numbered_manim_scenes --output my_project/final_output_video.mp4
+    ```
+
+#### `all`
+Runs the entire video generation pipeline: generates script, Manim code, audio, renders Manim scenes, and creates the final video.
+
+*   **Arguments:**
+    *   `--topic <topic>`: (Required) The topic for the video.
+    *   `--output_dir <directory>`: (Optional) The base directory where all intermediate and final outputs (script, code, audio, media, final video) will be saved. Defaults to `output/full_pipeline_run/`.
+*   **Example:**
+    ```bash
+    python bin/eui.py all --topic "The Wonders of the Cosmos" --output_dir video_projects/cosmos_show
+    ```
+
 ## Project Structure
 ```
 Eui/
