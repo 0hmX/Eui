@@ -61,80 +61,41 @@ The framework operates through a series of agents and tools:
     ```
     Replace `"your_google_api_key_here"` with your actual API key.
 
-## Using the Agents and Tools
+## Workflow Components (Internal Details)
 
-The primary workflow involves running the agents sequentially. Ensure your `uv`-managed virtual environment is activated and you are in the root `Eui` directory.
+The Eui framework is composed of several core Python scripts located in the `src/` directory. While the recommended way to use the framework is through the [Eui CLI Tool](#eui-cli-tool-bineuipy), understanding these components can be helpful for developers or for debugging. The CLI tool essentially orchestrates these components.
 
-### 1. Generate the Video Script (`script_agent.py`)
+### 1. Script Generation (`src/agents/script_agent.py`)
 
-This agent takes a topic as input and generates a `script.json` file, which outlines the structure and content of your video.
-
-*   **Purpose:** To convert a single topic idea into a structured, multi-scene script suitable for automated processing by subsequent tools.
+*   **Purpose:** Takes a high-level topic and generates a detailed `script.json` file. This JSON file breaks down the video into scenes, each with descriptions for music, speech, animation, and duration.
 *   **Input:** A string describing the video topic.
-*   **Output:** A `script.json` file in the project root, containing an array of scene objects.
+*   **Output:** A `script.json` file (by default), containing an array of scene objects.
 
-**How to Run:**
-```bash
-uv run python -m src.agents.script_agent "Your Video Topic Here"
-```
-For example:
-```bash
-uv run python -m src.agents.script_agent "The Basics of Quantum Entanglement"
-```
-You can also specify an output file path:
-```bash
-uv run python -m src.agents.script_agent "My Topic" --output my_custom_script.json
-```
-This will create `script.json` (or your specified output file).
+### 2. Manim Code Generation (`src/agents/manim_agent.py`)
 
-### 2. Generate Audio Files (`audio_tool.py`)
+*   **Purpose:** Reads the `script.json` (specifically the "animation-description" for each scene) and generates Python scripts for Manim.
+*   **Input:** A `script.json` file.
+*   **Output:** A Markdown file (e.g., `code.md`) containing Manim Python code snippets for each scene.
 
-This tool reads the `script.json` file and generates an audio file for the "speech" part of each scene using the Chatterbox TTS.
+### 3. Audio Generation (`src/tools/audio_tool.py` & `src/tools/audio_generator_tool.py`)
 
-*   **Purpose:** To convert the textual narration from `script.json` into audible speech.
-*   **Input:** `script.json` (by default, from the project root).
-*   **Output:** Audio files (e.g., `1.mp3`, `2.mp3`, etc.) in the `out/audio/` directory.
+*   **Purpose:** `audio_tool.py` processes the `script.json` file, taking the "speech" text from each scene. It then calls `audio_generator_tool.py` (which uses Chatterbox TTS) to generate corresponding audio files.
+*   **Input:** A `script.json` file.
+*   **Output:** Numbered audio files (e.g., `1.mp3`, `2.mp3`, etc.) for each scene.
 
-**How to Run:**
-The `audio_tool.py` script is typically run directly. It expects `script.json` to be present in the root directory.
-```bash
-uv run python -m src.tools.audio_tool
-```
-It will iterate through `script.json`, find the `speech` field for each item, and call the `audo_generator_tool.py` (which uses Chatterbox) to create the audio files.
+### 4. Manim Rendering (`src/tools/render_manim_tool.py`)
 
-### 3. Generate Manim Animation Code (`manim_agent.py`)
+*   **Purpose:** Takes the generated Manim Python scripts (typically from a Markdown file) and renders them into video segments.
+*   **Input:** A Markdown file containing Manim scripts.
+*   **Output:** Video files for each rendered Manim scene.
 
-This agent processes the `script.json` file, focusing on the "animation-description" for each scene, and generates Manim Python scripts.
+### 5. Video Stitching (`src/tools/video_tool.py`)
 
-*   **Purpose:** To translate textual descriptions of animations into executable Manim code.
-*   **Input:** `script.json` (implicitly, by reading it).
-*   **Output:** A `code.md` file in the `out/` directory, containing Manim Python code snippets for each scene. These snippets are intended to be runnable Manim scenes.
+*   **Purpose:** Combines the generated audio and Manim video segments for each scene, and then concatenates these scenes into a final video file.
+*   **Input:** A `script.json` file, a directory of numbered audio files, and a directory of numbered Manim video files.
+*   **Output:** A final MP4 video.
 
-**How to Run:**
-```bash
-uv run python -m src.agents.manim_agent
-```
-This agent will read `script.json`, and for each item, it will use the `animation-description` to prompt an LLM (Gemini) to generate Manim code. The generated code (after type-checking attempts) is saved to `out/code.md`.
-
-### 4. Render Manim Animations (`render_manim_tool.py`)
-
-This tool takes the Manim Python code generated by `manim_agent.py` (from `out/code.md`) and renders each scene into a video file.
-
-*   **Purpose:** To convert the Manim Python scripts into actual video animations.
-*   **Input:** `out/code.md` (containing Manim scripts).
-*   **Output:** Video files (e.g., `scene_1.mp4`, `scene_2.mp4`, etc.) in the `out/video/` directory.
-
-**How to Run:**
-```bash
-uv run python -m src.tools.render_manim_tool
-```
-This script will parse `out/code.md`, extract each Manim scene code, save it as a temporary Python file, and then use Manim to render it.
-
-### 5. (Future/Manual) Combine Audio and Video
-After generating audio and video segments for each scene, you would typically combine them.
-- For each scene `i`: Combine `out/audio/<i>.mp3` with `out/video/scene_<i>.mp4`.
-- Concatenate all combined scenes into the final video.
-This step might require a video editing tool like `ffmpeg` or a custom script.
+For detailed usage and to run these steps, please refer to the [Eui CLI Tool](#eui-cli-tool-bineuipy) documentation below.
 
 ## Eui CLI Tool (`bin/eui.py`)
 
@@ -286,6 +247,6 @@ Contributions to Eui are welcome! Please follow these general guidelines:
 6.  **Open a Pull Request (PR)** against the main Eui repository, detailing your changes, why they are needed, and how you tested them.
 
 ## Troubleshooting
-- **`ImportError: attempted relative import with no known parent package`**: This usually means you are running a script directly from within a subdirectory (e.g., `python src/agents/script_agent.py`) instead of as a module from the project root. Use `uv run python -m src.agents.script_agent ...` from the `Eui` root directory.
+- **`ImportError: attempted relative import with no known parent package`**: If you encounter this while trying to run scripts from `src/` directly, it's because they are designed to be part of a package. The recommended way to use the project is via the `bin/eui.py` CLI tool from the project root.
 - **`uv: command not found`**: Ensure `uv` is installed and in your system's PATH. Refer to the official `uv` installation guide.
 - **Chatterbox errors**: Refer to the `chatterbox/README.md` and ensure all its dependencies and any required models are correctly set up.

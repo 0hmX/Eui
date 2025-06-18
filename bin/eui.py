@@ -6,7 +6,7 @@ import sys
 import logging
 import json
 import shutil
-import glob # For run_all_pipeline checks
+# import glob # For run_all_pipeline checks -> Removed as unused
 from dotenv import load_dotenv
 
 # Adjust sys.path
@@ -38,8 +38,6 @@ def run_generate_script(topic: str, output_path: str) -> bool:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         initial_state = ScriptGenerationState(
             topic=topic, video_prompt_template_content="", # Loaded by agent
-        generated_script_str=None, parsed_script=None, error_message=None
-    )
             generated_script_str=None, parsed_script=None, error_message=None
         )
         # Assuming script_agent_app is a LangGraph compiled app
