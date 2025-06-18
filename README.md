@@ -189,6 +189,20 @@ Creates the final video by stitching together audio and Manim video scenes based
     python bin/eui.py create-final-video --script my_project/script.json --audio_input_dir my_project/audio_clips --manim_input_dir my_project/numbered_manim_scenes --output my_project/final_output_video.mp4
     ```
 
+#### `init`
+Initializes a new EUI project by creating an `eui.config.json` file in the specified directory. This file can be used to set project-specific defaults.
+
+*   **Arguments:**
+    *   `directory` (optional positional): The directory to initialize the project in. Defaults to the current directory (`.`).
+*   **Examples:**
+    ```bash
+    # Initialize in the current directory
+    python bin/eui.py init
+
+    # Initialize in a specific directory
+    python bin/eui.py init path/to/my_video_project
+    ```
+
 #### `all`
 Runs the entire video generation pipeline: generates script, Manim code, audio, renders Manim scenes, and creates the final video.
 
@@ -199,6 +213,40 @@ Runs the entire video generation pipeline: generates script, Manim code, audio, 
     ```bash
     python bin/eui.py all --topic "The Wonders of the Cosmos" --output_dir video_projects/cosmos_show
     ```
+
+### `eui.config.json` File
+
+When you run the `init` command, an `eui.config.json` file is created in your project directory. This file allows you to define project-specific default settings for the EUI pipeline.
+
+Currently, the `eui` CLI tool does not automatically load settings from this file to override command-line defaults. However, the file is generated with common configurable options as a starting point for your project, and future versions of the CLI may use it to customize default behaviors for commands like `all`, `generate-script`, etc.
+
+Paths defined within `eui.config.json` (like `output_dir_base` and other output paths) are typically interpreted as relative to the directory containing the `eui.config.json` file itself.
+
+**Default Structure and Fields:**
+
+```json
+{
+  "topic": "My Awesome Video Topic",
+  "language": "en-US",
+  "output_dir_base": "project_outputs",
+  "voice_sample_path": null,
+  "script_input_path": null,
+  "manim_code_path": "project_outputs/code.md",
+  "audio_output_dir": "project_outputs/audio_files",
+  "manim_media_output_dir": "project_outputs/manim_media",
+  "final_video_path": "project_outputs/final_video.mp4"
+}
+```
+
+*   `topic`: Default topic for video generation.
+*   `language`: Language code (e.g., for TTS or content generation hints).
+*   `output_dir_base`: A base directory, relative to the config file, where all outputs for this project will be stored.
+*   `voice_sample_path`: (Optional) Path to a voice sample for TTS, if supported by the TTS engine, to clone a voice.
+*   `script_input_path`: (Optional) If you have an existing `script.json` compatible file, you can specify its path here to bypass the script generation phase in some workflows.
+*   `manim_code_path`: Default relative path for the generated Manim code markdown file.
+*   `audio_output_dir`: Default relative path for the directory where generated audio files will be saved.
+*   `manim_media_output_dir`: Default relative path for the directory where rendered Manim media (videos/images) will be saved.
+*   `final_video_path`: Default relative path for the final output video file.
 
 ## Project Structure
 ```

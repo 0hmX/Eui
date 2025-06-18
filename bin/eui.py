@@ -31,6 +31,45 @@ logger = setup_custom_logging(logger_name="EuiCli")
 
 # --- Define command functions (with workarounds for now) ---
 
+def run_init(directory_path: str) -> bool:
+    logger.info(f"Initializing EUI project in '{directory_path}'...")
+    try:
+        target_dir_abs = os.path.abspath(directory_path)
+        os.makedirs(target_dir_abs, exist_ok=True)
+        logger.debug(f"Ensured directory exists: {target_dir_abs}")
+
+        config_file_path = os.path.join(target_dir_abs, "eui.config.json")
+
+        if os.path.exists(config_file_path):
+            logger.warning(f"Configuration file 'eui.config.json' already exists in {target_dir_abs}. No changes made.")
+            return True # Not an error, config already there.
+
+        default_config = {
+            "topic": "My Awesome Video Topic",
+            "language": "en-US",
+            # Paths are relative to the directory containing eui.config.json
+            "output_dir_base": "project_outputs",
+            "voice_sample_path": None, # Optional path to a voice sample for TTS
+            "script_input_path": None, # Optional path to an existing script.json to bypass generation
+            "manim_code_path": "project_outputs/code.md",
+            "audio_output_dir": "project_outputs/audio_files",
+            "manim_media_output_dir": "project_outputs/manim_media",
+            "final_video_path": "project_outputs/final_video.mp4"
+        }
+
+        with open(config_file_path, 'w', encoding='utf-8') as f:
+            json.dump(default_config, f, indent=2)
+
+        logger.info(f"Successfully created 'eui.config.json' in {target_dir_abs}")
+        logger.info("You can now edit this file to customize your project settings.")
+        return True
+    except IOError as e:
+        logger.exception(f"An I/O error occurred while creating 'eui.config.json' in '{directory_path}': {e}")
+        return False
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during 'init' command in '{directory_path}': {e}")
+        return False
+
 def run_generate_script(topic: str, output_path: str) -> bool:
     logger.info(f"Starting script generation for topic: '{topic}' -> {output_path}")
     try:
@@ -310,6 +349,8 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
 
     # Default paths, project_root should be defined globally
+    # Note: default_project_dir is for the 'init' command, not directly used by other command defaults here.
+    # default_project_dir = os.path.join(project_root, "eui_project") # Example if we wanted a subdir
     default_output_base = os.path.join(project_root, "output") # General base for single command outputs
     default_script_output = os.path.join(default_output_base, "script.json")
     default_manim_code_output = os.path.join(default_output_base, "code.md")
@@ -328,6 +369,11 @@ def main():
     gmc_parser.add_argument("--script", default=default_script_output, help=f"Input script JSON path (default: {default_script_output}).")
     gmc_parser.add_argument("--output", default=default_manim_code_output, help=f"Manim code Markdown output path (default: {default_manim_code_output}).")
     gmc_parser.set_defaults(func=lambda args: run_generate_manim_code(args.script, args.output))
+
+    # --- init command ---
+    init_parser = subparsers.add_parser("init", help="Initialize a new EUI project (creates eui.config.json).")
+    init_parser.add_argument("directory", nargs="?", default=".", help="Directory to initialize the project in (default: current directory).")
+    init_parser.set_defaults(func=lambda args: run_init(args.directory))
 
     ga_parser = subparsers.add_parser("generate-audio", help="Generate audio from script JSON.")
     ga_parser.add_argument("--script", default=default_script_output, help=f"Input script JSON path (default: {default_script_output}).")
