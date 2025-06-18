@@ -3,11 +3,10 @@
 import argparse
 import os
 import sys
-import logging
 import json
 import shutil
-# import glob # For run_all_pipeline checks -> Removed as unused
 from dotenv import load_dotenv
+import re
 
 # Adjust sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +17,7 @@ try:
     from src.agents.script_agent import app as script_agent_app, ScriptGenerationState
     from src.agents.manim_agent import generate_manim_code_from_script
     from src.tools.audio_tool import generate_audio_from_script
-    from src.tools.render_manim_tool import render_manim_scenes, find_scene_name # Added find_scene_name
+    from src.tools.render_manim_tool import render_manim_scenes, find_scene_name
     from src.tools.video_tool import create_video_from_script
     from src.utils.custom_logging import setup_custom_logging
 except ImportError as e:
