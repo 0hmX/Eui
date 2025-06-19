@@ -111,22 +111,16 @@ The Eui CLI tool (`bin/eui.py`) provides a unified command-line interface to orc
 The CLI tool is located at `bin/eui.py`. You can run it using:
 
 ```bash
-python bin/eui.py <command> [options]
-```
-
-Or, if you make it executable (`chmod +x bin/eui.py`):
-
-```bash
-./bin/eui.py <command> [options]
+uv run bin/eui.py <command> [options]
 ```
 
 To see all available commands and their general help:
 ```bash
-python bin/eui.py --help
+uv run bin/eui.py --help
 ```
 To see help for a specific command:
 ```bash
-python bin/eui.py <command> --help
+uv run bin/eui.py <command> --help
 ```
 
 ### Commands
@@ -139,7 +133,7 @@ Generates a script JSON file from a given topic.
     *   `--output <path>`: (Optional) Path to save the generated script JSON file. Defaults to `output/script.json`.
 *   **Example:**
     ```bash
-    python bin/eui.py generate-script --topic "The Science of Black Holes" --output my_project/black_holes_script.json
+    uv run bin/eui.py generate-script --topic "The Science of Black Holes" --output my_project/black_holes_script.json
     ```
 
 #### `generate-manim-code`
@@ -150,7 +144,7 @@ Generates Manim Python code (as Markdown) from a script JSON file.
     *   `--output <path>`: (Optional) Path to save the generated Manim code Markdown file. Defaults to `output/code.md`.
 *   **Example:**
     ```bash
-    python bin/eui.py generate-manim-code --script my_project/black_holes_script.json --output my_project/manim_code.md
+    uv run bin/eui.py generate-manim-code --script my_project/black_holes_script.json --output my_project/manim_code.md
     ```
 
 #### `generate-audio`
@@ -161,7 +155,7 @@ Generates audio files from the speech segments in a script JSON file.
     *   `--output_dir <directory>`: (Optional) Directory to save the generated audio files (e.g., `1.mp3`, `2.mp3`). Defaults to `output/audio_files/`.
 *   **Example:**
     ```bash
-    python bin/eui.py generate-audio --script my_project/black_holes_script.json --output_dir my_project/audio_clips
+    uv run bin/eui.py generate-audio --script my_project/black_holes_script.json --output_dir my_project/audio_clips
     ```
 
 #### `render-video`
@@ -172,7 +166,7 @@ Renders Manim video scenes from a Manim code Markdown file.
     *   `--media_dir <directory>`: (Optional) Directory to save the rendered Manim media files (e.g., `SceneClassName.mp4`). Defaults to `output/manim_media_output/`.
 *   **Example:**
     ```bash
-    python bin/eui.py render-video --code my_project/manim_code.md --media_dir my_project/rendered_scenes
+    uv run bin/eui.py render-video --code my_project/manim_code.md --media_dir my_project/rendered_scenes
     ```
 
 #### `create-final-video`
@@ -197,7 +191,7 @@ Runs the entire video generation pipeline: generates script, Manim code, audio, 
     *   `--output_dir <directory>`: (Optional) The base directory where all intermediate and final outputs (script, code, audio, media, final video) will be saved. Defaults to `output/full_pipeline_run/`.
 *   **Example:**
     ```bash
-    python bin/eui.py all --topic "The Wonders of the Cosmos" --output_dir video_projects/cosmos_show
+    uv run bin/eui.py all --topic "The Wonders of the Cosmos" --output_dir video_projects/cosmos_show
     ```
 
 ## Project Structure
