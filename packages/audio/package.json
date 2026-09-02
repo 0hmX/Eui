@@ -1,0 +1,12 @@
+{
+  "name": "@eui/audio",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": { "typecheck": "bun ../../node_modules/typescript/bin/tsc --noEmit" },
+  "dependencies": {
+    "@eui/compiler": "workspace:*",
+    "@eui/schema": "workspace:*",
+    "zod": "3.25.76"
+  }
+}

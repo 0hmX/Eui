@@ -10,6 +10,7 @@ env.sh
 idea.md
 chatterbox/target.mp3
 .venv
+.venv-manim/
 .dmypy.json
 .mypy*
 .ruff*
@@ -17,3 +18,13 @@ voice_sample.mp3
 default/eui.json
 class_methods.txt
 module_signatures.txt
+.eui-workflow/
+node_modules/
+.bun-cache/
+.bun-tmp/
+dist/
+.eui-cache/
+.eui/
+.tscircuit/
+.manim*/
+__pycache__/

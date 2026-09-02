@@ -1,0 +1,19 @@
+{
+  "name": "eui",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "bin": {
+    "eui": "./packages/cli/src/bin.ts"
+  },
+  "scripts": {
+    "eui": "bun run packages/cli/src/bin.ts",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "react": "^19.2.8",
+    "tscircuit": "^0.0.2462",
+    "typescript": "5.9.3"
+  }
+}

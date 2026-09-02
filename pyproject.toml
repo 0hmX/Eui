@@ -19,9 +19,7 @@ dependencies = [
     "requests>=2.32.4",
     "ty>=0.0.1a9",
     "typing-extensions>=4.14.0",
-    "youtube-upload",
 ]
 
 [tool.uv.sources]
-youtube-upload = { path = "submodule/youtube-upload" }
 chatterbox-tts = { path = "submodule/chatterbox" }

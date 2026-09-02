@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "verification", "remaining"],
+  "properties": {
+    "status": { "type": "string", "enum": ["complete", "blocked"] },
+    "summary": { "type": "string" },
+    "verification": { "type": "array", "items": { "type": "string" } },
+    "remaining": { "type": "array", "items": { "type": "string" } }
+  }
+}

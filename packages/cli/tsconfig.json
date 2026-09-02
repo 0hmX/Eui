@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@eui/audio": ["packages/audio/src/index.ts"],
+      "@eui/compiler": ["packages/compiler/src/index.ts"],
+      "@eui/renderer": ["packages/renderer/src/index.ts"],
+      "@eui/renderer-manim": ["packages/renderer-manim/src/index.ts"],
+      "@eui/schema": ["packages/schema/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
